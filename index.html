@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>p5.clickery demo</title>
+  <style>
+    body { margin: 0; background: #111; color: #ddd; font-family: sans-serif; }
+    #game { display: flex; justify-content: center; padding: 16px; }
+    #game canvas { max-width: 100%; height: auto; image-rendering: pixelated; }
+  </style>
+  <script src="node_modules/p5/lib/p5.min.js"></script>
+</head>
+<body>
+  <div id="game"></div>
+  <script type="module">
+    import { registerClickery } from './src/index.js';
+
+    // Must run before the p5 instance is created.
+    registerClickery(p5);
+
+    const sketch = (p) => {
+      p.setup = () => {
+        p.createGameCanvas(640, 360);
+        p.textAlign(p.CENTER, p.CENTER);
+      };
+
+      p.draw = () => {
+        p.background(30, 40, 60);
+        p.noStroke();
+        p.fill(230, 190, 90);
+        p.rect(40, 40, 560, 280, 12);
+        p.fill(20);
+        p.textSize(24);
+        p.text(`p5.clickery ${p5.clickery.version}`, p.width / 2, p.height / 2);
+        p.textSize(14);
+        p.text(`logical ${p.clickery.logicalWidth}x${p.clickery.logicalHeight}`, p.width / 2, p.height / 2 + 30);
+      };
+    };
+
+    new p5(sketch, document.getElementById('game'));
+  </script>
+</body>
+</html>

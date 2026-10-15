@@ -1,0 +1,15 @@
+{
+  "name": "p5.clickery",
+  "version": "0.0.1",
+  "description": "Point-and-click adventure library built on p5.js 2.x",
+  "type": "module",
+  "main": "src/index.js",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "p5": "2.3.4"
+  }
+}
