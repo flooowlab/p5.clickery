@@ -65,14 +65,14 @@ Each phase ends with a working demo and passing tests.
 - [x] Add `package.json` (ES module, p5 pinned to 2.3.4), `.gitignore`, and a demo `index.html` that loads p5 2.x from `node_modules`.
 - [x] Register the addon (`registerClickery`) and create a fixed-size canvas in instance mode (`createGameCanvas`).
 - [x] Tests run with `npm test` (Node's built-in runner, see Stack decisions).
-- [ ] Check the demo in a browser. Not yet done: no browser was available in the build environment.
+- [x] Check the demo in a browser.
 
 ### P1 · Core
-- [ ] Game loop with delta time and a pause flag.
-- [ ] Event bus (`on`, `off`, `emit`).
-- [ ] Scheduler and `Timer` (`wait(ms)` returns a promise).
-- [ ] State store with `get`, `set`, `watch`, `toJSON`, `fromJSON`.
-- [ ] Save and load to localStorage, plus file export and import.
+- [x] Game loop with delta time and a pause flag.
+- [x] Event bus (`on`, `off`, `emit`).
+- [x] Scheduler and `Timer` (`wait(ms)` returns a promise).
+- [x] State store with `get`, `set`, `watch`, `toJSON`, `fromJSON`.
+- [x] Save and load to localStorage, plus file export and import.
 - **Done when:** state round-trips through save and load in a test.
 
 ### P2 · Scenes

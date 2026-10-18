@@ -13,17 +13,33 @@
 </head>
 <body>
   <div id="game"></div>
+  <p style="text-align:center">
+    <button id="pause">Pause / resume</button>
+    <button id="save">Save</button>
+    <button id="load">Load</button>
+    <button id="export">Export file</button>
+  </p>
   <script type="module">
-    import { registerClickery } from './src/index.js';
+    import { registerClickery, createCore, saveToSlot, loadFromSlot, exportToFile } from './src/index.js';
 
     // Must run before the p5 instance is created.
     registerClickery(p5);
+
+    // P1 demo: the core drives a clock; clicking counts clicks in the state store.
+    const core = createCore();
+    core.loop.start();
+    core.state.set('vars.clicks', 0);
+    core.state.set('vars.seconds', 0);
+    core.scheduler.every(1000, () => core.state.set('vars.seconds', core.state.get('vars.seconds') + 1));
+    core.events.on('click', () => core.state.set('vars.clicks', core.state.get('vars.clicks') + 1));
 
     const sketch = (p) => {
       p.setup = () => {
         p.createGameCanvas(640, 360);
         p.textAlign(p.CENTER, p.CENTER);
       };
+
+      p.mousePressed = () => core.events.emit('click');
 
       p.draw = () => {
         p.background(30, 40, 60);
@@ -35,8 +51,15 @@
         p.text(`p5.clickery ${p5.clickery.version}`, p.width / 2, p.height / 2);
         p.textSize(14);
         p.text(`logical ${p.clickery.logicalWidth}x${p.clickery.logicalHeight}`, p.width / 2, p.height / 2 + 30);
+        p.text(`${core.state.get('vars.seconds')} s, ${core.state.get('vars.clicks')} clicks (click the canvas)`, p.width / 2, p.height / 2 + 60);
       };
     };
+
+    const $ = (id) => document.getElementById(id);
+    $('pause').onclick = () => (core.loop.paused ? core.loop.resume() : core.loop.pause());
+    $('save').onclick = () => saveToSlot(core.state, 'demo');
+    $('load').onclick = () => loadFromSlot(core.state, 'demo');
+    $('export').onclick = () => exportToFile(core.state);
 
     new p5(sketch, document.getElementById('game'));
   </script>
