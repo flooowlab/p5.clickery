@@ -9,3 +9,5 @@
 - P2 scenes: `parseRoom` (room JSON format), `Camera` (scrolling, parallax offsets), `Fade`, `SceneManager`
   (`goTo`, `restore`, enter/exit hooks, `room:enter`/`room:exit` events) and p5 draw helpers
   (`drawBackground`, `drawForeground`, `drawFade`).
+- P3 hotspots: `Hotspot`, `createHotspot`/`createHotspots`, providers (`polygon`, `colorMask`, `svg`), `HoverTracker`
+  (`hover` event), `clientToLogical` pointer mapping and `drawDebugOverlay`. `rooms.html` is the demo.

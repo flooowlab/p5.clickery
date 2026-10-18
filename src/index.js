@@ -2,6 +2,9 @@ export const VERSION = '0.0.1';
 
 export * from './core/index.js';
 export * from './scene/index.js';
+export * from './hit/index.js';
+export { clientToLogical } from './ui/pointer.js';
+export { drawDebugOverlay } from './debug/overlay.js';
 
 // p5 addon: adds the p5.clickery namespace and createGameCanvas() to every sketch.
 export function clickeryAddon(p5, fn) {

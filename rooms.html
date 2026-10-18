@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>p5.clickery rooms demo</title>
+  <style>
+    body { margin: 0; background: #111; color: #ddd; font-family: sans-serif; }
+    #game { display: flex; justify-content: center; padding: 16px; }
+    #game canvas { max-width: 100%; height: auto; touch-action: none; }
+    p { text-align: center; margin: 4px; }
+  </style>
+  <script src="node_modules/p5/lib/p5.min.js"></script>
+</head>
+<body>
+  <div id="game"></div>
+  <p>Arrow keys scroll. Click the door to change room, click the crate to open it (state persists). D toggles the debug overlay.</p>
+  <p><button id="save">Save</button> <button id="load">Load</button></p>
+  <script type="module">
+    import {
+      registerClickery, createCore, SceneManager, HoverTracker, createHotspots, clientToLogical,
+      drawBackground, drawForeground, drawFade, drawDebugOverlay, saveToSlot, loadFromSlot,
+    } from './src/index.js';
+
+    registerClickery(p5);
+
+    const VIEW_W = 640, VIEW_H = 360;
+
+    // Hidden mask for the lamp, drawn with hard edges (no antialiasing), read once.
+    const maskCanvas = Object.assign(document.createElement('canvas'), { width: 960, height: 360 });
+    const mctx = maskCanvas.getContext('2d', { willReadFrequently: true });
+    mctx.fillStyle = '#00ff00';
+    mctx.fillRect(420, 90, 40, 120);
+    const maskPixels = mctx.getImageData(0, 0, 960, 360);
+
+    const rooms = {
+      hall: {
+        id: 'hall', width: 960, height: 360, color: '#2d3a55',
+        starts: { default: { x: 100, y: 300 }, east: { x: 880, y: 300 } },
+        walkable: [{ id: 'floor', points: [[0, 250], [960, 250], [960, 360], [0, 360]] }],
+        hotspots: [
+          { id: 'door', provider: 'polygon', points: [[860, 120], [940, 120], [940, 250], [860, 250]], goTo: ['cellar', 'default'] },
+          { id: 'crate', provider: 'svg', d: 'M180 200 L280 200 L280 260 L180 260 Z' },
+          { id: 'lamp', provider: 'colorMask', mask: 'mask', color: '#00ff00' },
+        ],
+      },
+      cellar: {
+        id: 'cellar', width: 960, height: 360, color: '#3a2d2d',
+        starts: { default: { x: 100, y: 300 }, east: { x: 880, y: 300 } },
+        walkable: [{ id: 'floor', points: [[0, 250], [960, 250], [960, 360], [0, 360]] }],
+        hotspots: [
+          { id: 'door', provider: 'polygon', points: [[20, 120], [100, 120], [100, 250], [20, 250]], goTo: ['hall', 'east'] },
+        ],
+      },
+    };
+
+    const core = createCore();
+    const scene = new SceneManager({
+      ...core, viewWidth: VIEW_W, viewHeight: VIEW_H, fadeMs: 400,
+      loadRoom: async (id) => rooms[id],
+    });
+    const hover = new HoverTracker(core.events);
+    let hotspots = [];
+    core.events.on('room:enter', ({ room }) => {
+      hotspots = createHotspots(room, { pixels: () => maskPixels });
+      hover.setHotspots(hotspots);
+    });
+    core.loop.start();
+    scene.goTo('hall');
+
+    let debug = false;
+    let pointer = null; // logical canvas coordinates
+
+    const sketch = (p) => {
+      p.setup = () => {
+        const canvas = p.createGameCanvas(VIEW_W, VIEW_H);
+        p.textAlign(p.LEFT, p.TOP);
+        const toLogical = (e) => clientToLogical(e.clientX, e.clientY, canvas.elt.getBoundingClientRect(), VIEW_W, VIEW_H);
+        canvas.elt.addEventListener('pointermove', (e) => { pointer = toLogical(e); });
+        canvas.elt.addEventListener('pointerleave', () => { pointer = null; hover.clear(); });
+        canvas.elt.addEventListener('pointerdown', async (e) => {
+          pointer = toLogical(e);
+          if (scene.busy || !scene.room) return;
+          const w = scene.camera.screenToWorld(pointer.x, pointer.y);
+          const hit = hover.update(w.x, w.y);
+          if (hit?.id === 'crate') core.state.set('rooms.hall.crateOpen', !core.state.get('rooms.hall.crateOpen', false));
+          if (hit?.goTo) await scene.goTo(...hit.goTo);
+        });
+      };
+
+      p.keyPressed = () => { if (p.key === 'd' || p.key === 'D') debug = !debug; };
+
+      p.draw = () => {
+        const room = scene.room;
+        if (!room) return;
+        const cam = scene.camera;
+        if (p.keyIsDown(p.LEFT_ARROW)) cam.moveTo(cam.x - 6, cam.y);
+        if (p.keyIsDown(p.RIGHT_ARROW)) cam.moveTo(cam.x + 6, cam.y);
+        if (pointer && !scene.busy) {
+          const w = cam.screenToWorld(pointer.x, pointer.y);
+          hover.update(w.x, w.y);
+        }
+
+        drawBackground(p, room, cam);
+        p.noStroke();
+        p.fill(60, 70, 90);
+        p.rect(-cam.x, 250 - cam.y, room.width, 110);
+        p.fill(180, 140, 80);
+        const [[dx, dy], , [dx2, dy2]] = room.hotspots.find((h) => h.id === 'door').points;
+        p.rect(dx - cam.x, dy - cam.y, dx2 - dx, dy2 - dy);
+        if (room.id === 'hall') {
+          const open = core.state.get('rooms.hall.crateOpen', false);
+          p.fill(open ? p.color(120, 80, 40) : p.color(160, 110, 60));
+          p.rect(180 - cam.x, (open ? 215 : 200) - cam.y, 100, open ? 45 : 60);
+          p.fill(250, 230, 120);
+          p.rect(420 - cam.x, 90 - cam.y, 40, 120);
+        }
+        drawForeground(p, room, cam);
+
+        const h = hover.hovered;
+        p.fill(255);
+        p.textSize(14);
+        p.text(`${room.id}${h ? ` > ${h.id}` : ''}`, 8, 8);
+        if (debug) drawDebugOverlay(p, { hotspots, room, camera: cam, hovered: h });
+        drawFade(p, scene.fade);
+      };
+    };
+
+    document.getElementById('save').onclick = () => saveToSlot(core.state, 'rooms');
+    document.getElementById('load').onclick = async () => {
+      if (loadFromSlot(core.state, 'rooms')) await scene.restore();
+    };
+
+    new p5(sketch, document.getElementById('game'));
+  </script>
+</body>
+</html>

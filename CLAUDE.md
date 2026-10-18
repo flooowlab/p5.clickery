@@ -76,15 +76,15 @@ Each phase ends with a working demo and passing tests.
 - **Done when:** state round-trips through save and load in a test.
 
 ### P2 · Scenes
-- [ ] Room JSON format: size, background, layers, hotspots, walkable areas, start positions.
-- [ ] Camera scrolling for rooms wider than the screen. Parallax layers follow the camera.
-- [ ] Room enter and exit hooks, and fade transitions.
+- [x] Room JSON format: size, background, layers, hotspots, walkable areas, start positions.
+- [x] Camera scrolling for rooms wider than the screen. Parallax layers follow the camera.
+- [x] Room enter and exit hooks, and fade transitions.
 - **Done when:** the demo walks between two rooms and state persists across the change.
 
 ### P3 · Hotspots
-- [ ] `Hotspot` class with the three providers above.
-- [ ] Hover detection gives the hovered hotspot id to the interaction layer.
-- [ ] Debug overlay draws hotspot shapes and hit areas.
+- [x] `Hotspot` class with the three providers above.
+- [x] Hover detection gives the hovered hotspot id to the interaction layer.
+- [x] Debug overlay draws hotspot shapes and hit areas.
 - **Done when:** each provider passes the same hit test on the same room.
 
 ### P4 · Navigation and actors
