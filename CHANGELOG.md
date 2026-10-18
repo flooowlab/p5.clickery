@@ -18,3 +18,7 @@
   handlers, default responses, smart or verb mode, `setHotspotEnabled`), `applyHotspotState`, `PointerController`
   (mouse hover, tap-to-highlight on touch, long press and right-click to look), `InventoryBar`, `hoverLabel`,
   `drawHoverLabel`, `defaultStrings`. `adventure.html` is the three-object puzzle demo.
+- P6 scripting: `Scripts` registry (per-object `onInteract`/`onLook`/`onUse`/`onEnter`/`onEntered`/`onExit`, modules accepted),
+  `Cutscenes` (input lock, `skip()`, `skip(label)` with `cs.label()`), `once`/`firstLook`/`firstInteract`/`firstUse`,
+  skip button helpers. `Scheduler`, `Fade` and `Actor` gain `setSkipping(bool)` (fast-forward); `Actor.say` gains `literal`.
+  `SceneManager` gains an `onEntered` hook and accepts a `Scripts`/`Map`; `Interactor` takes `cutscenes` and exposes `context()`.

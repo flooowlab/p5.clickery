@@ -33,6 +33,7 @@ export class PointerController {
   down({ x, y, pointerType = 'mouse', button = 0 }) {
     this.pointer = { x, y };
     this.#cancelPress();
+    if (this.interactor.locked) return; // cutscene
     if (button === 2) { this.#run(this.#look(x, y)); return; }
     this.#press = { x, y, pointerType, consumed: false };
     const press = this.#press;

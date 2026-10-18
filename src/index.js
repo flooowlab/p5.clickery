@@ -6,6 +6,8 @@ export * from './hit/index.js';
 export * from './nav/index.js';
 export * from './actor/index.js';
 export * from './interact/index.js';
+export * from './script/index.js';
+export { skipButtonRect, hitSkipButton, drawSkipButton } from './ui/skip-button.js';
 export { InventoryBar, drawHoverLabel } from './ui/inventory-bar.js';
 export { clientToLogical } from './ui/pointer.js';
 export { drawDebugOverlay } from './debug/overlay.js';

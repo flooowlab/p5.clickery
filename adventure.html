@@ -15,11 +15,12 @@
 <body>
   <div id="game"></div>
   <p>Pick up the stick and the string, combine them (tap one in the bar, then the other), and fish the key out of the grate with the pole.
-     Mouse: click to act, right-click or hold to look. Touch: tap once to highlight, again to act, hold to look. D toggles debug.</p>
+     The game opens with a short cutscene (Skip button or Esc). Mouse: click to act, right-click or hold to look. Touch: tap once to highlight, again to act, hold to look. D toggles debug.</p>
   <script type="module">
     import {
       registerClickery, createCore, SceneManager, HoverTracker, createHotspots, clientToLogical, Navigator, Actor,
       Inventory, Interactor, PointerController, InventoryBar, hoverLabel, defaultStrings, applyHotspotState,
+      Cutscenes, Scripts, hitSkipButton, drawSkipButton, firstLook,
       sortByBaseline, drawBackground, drawFade, drawDebugOverlay, drawHoverLabel,
     } from './src/index.js';
 
@@ -37,6 +38,7 @@
       'grate.fish': 'Got it! A brass key.',
       'grate.reach': "I can't reach it with my hands.",
       'pole.made': 'A fishing pole. Not bad.',
+      'intro.wake': 'Ugh... where am I?', 'intro.look': 'It is far too dark to see anything.', 'intro.light': 'There. That is better. Let me look around.',
       'door.look': 'A heavy door.', 'door.locked': "It's locked.", 'door.open': 'The key fits. Well done!',
     });
     core.state.set('currentRoom', 'yard');
@@ -62,9 +64,25 @@
       items: { stick: { name: 'item.stick' }, string: { name: 'item.string' }, pole: { name: 'item.pole' }, key: { name: 'item.key' } },
       recipes: [{ a: 'stick', b: 'string', result: 'pole', say: 'pole.made' }],
     });
-    const interactor = new Interactor({ hero, state: core.state, events: core.events, inventory, hover });
+    const cutscenes = new Cutscenes({ events: core.events, scheduler: core.scheduler, targets: [hero, scene.fade] });
+    const interactor = new Interactor({ hero, state: core.state, events: core.events, inventory, hover, cutscenes });
+    const scripts = new Scripts({ interactor });
+    scene.scripts = scripts;
     const bar = new InventoryBar({ viewWidth: VIEW_W, viewHeight: VIEW_H });
     const pointer = new PointerController({ interactor, hover, camera: scene.camera, bar, scheduler: core.scheduler });
+
+    // The opening, once the room has faded in: walk, speak, switch the light on.
+    scripts.add('yard', {
+      onEntered: (c) => c.firstVisit && cutscenes.run(async (cs) => {
+        await hero.say('intro.wake');
+        await hero.walkTo({ x: 200, y: 285, dir: 'right' });
+        await hero.say('intro.look');
+        cs.label('light');
+        core.state.set('flags.lightOn', true);
+        await cs.wait(600);
+        await hero.say('intro.light');
+      }),
+    });
 
     // Scripts, one set per object id.
     const pickUp = (item, key) => ({
@@ -104,7 +122,7 @@
     core.events.on('update', (dt) => hero.update(dt));
     core.loop.start();
     scene.goTo('yard');
-    window.demo = { core, scene, hero, hover, interactor, inventory, pointer }; // for poking at it from the console
+    window.demo = { core, scene, hero, hover, interactor, inventory, pointer, cutscenes }; // for poking at it from the console
 
     let debug = false;
     const rectOf = (id) => { const pts = room.hotspots.find((h) => h.id === id).points; return [pts[0][0], pts[0][1], pts[2][0] - pts[0][0], pts[2][1] - pts[0][1]]; };
@@ -117,11 +135,18 @@
         el.addEventListener('contextmenu', (e) => e.preventDefault());
         el.addEventListener('pointermove', (e) => pointer.move(at(e)));
         el.addEventListener('pointerleave', () => pointer.leave());
-        el.addEventListener('pointerdown', (e) => { if (!scene.busy) pointer.down({ ...at(e), pointerType: e.pointerType, button: e.button }); });
+        el.addEventListener('pointerdown', (e) => {
+          const pt = at(e);
+          if (cutscenes.active) { if (hitSkipButton(pt.x, pt.y, VIEW_W)) cutscenes.skip(); return; }
+          if (!scene.busy) pointer.down({ ...pt, pointerType: e.pointerType, button: e.button });
+        });
         el.addEventListener('pointerup', (e) => pointer.up(at(e)));
         el.addEventListener('pointercancel', () => pointer.cancel());
       };
-      p.keyPressed = () => { if (p.key === 'd' || p.key === 'D') debug = !debug; };
+      p.keyPressed = () => {
+        if (p.key === 'd' || p.key === 'D') debug = !debug;
+        if (p.key === 'Escape') cutscenes.skip();
+      };
 
       p.draw = () => {
         const r = scene.room;
@@ -138,6 +163,8 @@
         p.fill(40); p.rect(...rectOf('grate'));
         if (!inventory.has('key') && !open) { p.fill(230, 200, 60); p.rect(430, 262, 10, 6); }
 
+        if (!core.state.get('flags.lightOn', false)) { p.fill(0, 0, 0, 170); p.rect(0, 0, VIEW_W, VIEW_H); }
+
         const s = hero.scale;
         p.fill(240, 120, 90);
         p.rect(hero.x - 14 * s, hero.y - 70 * s, 28 * s, 70 * s, 6);
@@ -153,6 +180,7 @@
         bar.draw(p, items, interactor.held);
         if (open) { p.fill(255); p.textSize(20); p.textAlign(p.CENTER, p.CENTER); p.text('You escaped!', VIEW_W / 2, 60); }
 
+        if (cutscenes.active) drawSkipButton(p, VIEW_W);
         const pos = pointer.pointer;
         const label = hoverLabel({
           hotspot: pointer.highlighted ?? hover.hovered, item: pointer.hoveredItem, held: interactor.held,

@@ -20,12 +20,13 @@ export class Interactor {
   onError = (err) => console.error(err);
   #token = 0;
 
-  constructor({ hero, state, events, inventory, hover, mode = 'smart', defaults = {} }) {
+  constructor({ hero, state, events, inventory, hover, cutscenes = null, mode = 'smart', defaults = {} }) {
     this.hero = hero;
     this.state = state;
     this.events = events;
     this.inventory = inventory;
     this.hover = hover;
+    this.cutscenes = cutscenes;
     this.mode = mode;
     this.defaults = {
       interact: 'default.interact', look: 'default.look', use: 'default.use', combine: 'default.combine', ...defaults,
@@ -37,8 +38,13 @@ export class Interactor {
     this.handlers.set(id, { ...this.handlers.get(id), ...handlers });
   }
 
+  // Input is ignored during a handler, and during a cutscene.
   get busy() {
-    return this.phase === 'act';
+    return this.phase === 'act' || this.locked;
+  }
+
+  get locked() {
+    return this.cutscenes?.active ?? false;
   }
 
   select(item) {
@@ -103,7 +109,7 @@ export class Interactor {
         if (!arrived || token !== this.#token) return false;
       }
       this.phase = 'act';
-      const ctx = this.#context(target, verb);
+      const ctx = this.context(target, verb);
       const handler = this.handlers.get(target.id)?.[{ interact: 'onInteract', look: 'onLook', use: 'onUse' }[verb]];
       const handled = handler ? (await handler(ctx)) !== false : false;
       if (!handled) await this.#say(verb);
@@ -141,16 +147,18 @@ export class Interactor {
     return key ? this.hero.say(key) : Promise.resolve();
   }
 
-  #context(target, verb) {
+  // What handlers receive. Also used for room and object enter hooks.
+  context(target, verb) {
     return {
       verb,
       id: target.id,
-      hotspot: target.hotspot,
-      item: target.itemUsed,
+      hotspot: target.hotspot ?? null,
+      item: target.itemUsed ?? null,
       hero: this.hero,
       state: this.state,
       inventory: this.inventory,
       interactor: this,
+      cutscenes: this.cutscenes,
       say: (key, options) => this.hero.say(key, options),
       setEnabled: (hotspotId, enabled) => this.setHotspotEnabled(hotspotId, enabled),
     };

@@ -102,9 +102,9 @@ Each phase ends with a working demo and passing tests.
 - **Done when:** a three-object puzzle (pick, combine, use) works with mouse and touch.
 
 ### P6 · Scripting
-- [ ] Per-object script files keyed by object id, with `onInteract`, `onLook`, `onUse`, `onEnter`.
-- [ ] Cutscene mode: input lock, skip button, and a `skipTo` label.
-- [ ] Helpers: `firstLook`, `firstUse`, which run once and store a flag.
+- [x] Per-object script files keyed by object id, with `onInteract`, `onLook`, `onUse`, `onEnter`.
+- [x] Cutscene mode: input lock, skip button, and a `skipTo` label.
+- [x] Helpers: `firstLook`, `firstUse`, which run once and store a flag.
 - **Done when:** an opening sequence with walks, speech and a door opens in cutscene mode.
 
 ### P7 · Dialogue

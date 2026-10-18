@@ -6,12 +6,15 @@ import { Fade } from './transition.js';
 // current room id and per-room data in the state store.
 //
 //   loadRoom(id)  -> room JSON (async, e.g. fetch)
-//   scripts[id]   -> { onEnter(ctx), onExit(ctx) }, both optional and may be async
+//   scripts       -> a Scripts registry, a Map, or a plain { roomId: { onEnter, onEntered, onExit } }
+//                    onEnter runs while the screen is black; onEntered after the fade-in
+//                    finishes (the place for an opening cutscene). Both may be async.
 //
 // Events: "room:exit" { room }, "room:enter" { room, start, firstVisit }.
 export class SceneManager {
   room = null;
   #busy = false;
+  #firstVisit = false;
 
   constructor({ state, events, loadRoom, scripts = {}, viewWidth, viewHeight, fadeMs = 300 }) {
     this.state = state;
@@ -41,6 +44,7 @@ export class SceneManager {
       }
       await this.#enter(room, start);
       await this.fade.in(this.fadeMs);
+      await this.#entered(room, start);
     } finally {
       this.#busy = false;
     }
@@ -69,11 +73,12 @@ export class SceneManager {
   async #leave() {
     const ctx = this.#context(this.room);
     this.events.emit('room:exit', ctx);
-    await this.scripts[this.room.id]?.onExit?.(ctx);
+    await this.#script(this.room.id)?.onExit?.(ctx);
   }
 
   async #enter(room, start) {
     const firstVisit = !this.state.get(`rooms.${room.id}.visited`, false);
+    this.#firstVisit = firstVisit;
     this.room = room;
     this.state.set('currentRoom', room.id);
     this.state.set(`rooms.${room.id}.visited`, true);
@@ -82,7 +87,19 @@ export class SceneManager {
     this.camera.centerOn(x, y);
     const ctx = { ...this.#context(room), start, firstVisit };
     this.events.emit('room:enter', ctx);
-    await this.scripts[room.id]?.onEnter?.(ctx);
+    await this.#script(room.id)?.onEnter?.(ctx);
+    await this.scripts.runEnter?.(ctx, 'onEnter');
+  }
+
+  async #entered(room, start) {
+    const ctx = { ...this.#context(room), start, firstVisit: this.#firstVisit };
+    this.events.emit('room:entered', ctx);
+    await this.#script(room.id)?.onEntered?.(ctx);
+    await this.scripts.runEnter?.(ctx, 'onEntered');
+  }
+
+  #script(id) {
+    return typeof this.scripts.get === 'function' ? this.scripts.get(id) : this.scripts[id];
   }
 
   #context(room) {

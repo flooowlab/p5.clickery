@@ -8,6 +8,7 @@ export class Actor {
   mode = 'idle'; // idle | walk | talk
   speech = null; // { key, text, remaining }
   textSpeed = 1; // above 1 shortens lines
+  skipping = false; // cutscene fast-forward: walks jump to the end, lines are not shown
   #path = [];
   #walkDone = null;
   #sayDone = null;
@@ -62,6 +63,11 @@ export class Actor {
     this.#endWalk(false);
     const path = this.navigator ? this.navigator.findPath(this, target) : [{ x: target.x, y: target.y }];
     if (!path || path.length === 0) return Promise.resolve(false);
+    if (this.skipping) {
+      this.#jumpTo(path.at(-1));
+      if (target.dir) this.face(target.dir);
+      return Promise.resolve(true);
+    }
     this.#path = path;
     this.mode = this.speech ? 'talk' : 'walk';
     return new Promise((resolve) => {
@@ -74,15 +80,28 @@ export class Actor {
 
   // Shows a line and resolves true when it ends. Speech key or text goes
   // through `translate`. A newer line ends the previous one.
-  say(key, { ms } = {}) {
+  // `literal` skips translation (text that comes from a dialogue file).
+  say(key, { ms, literal = false } = {}) {
     this.#endSay();
-    const text = this.translate(key);
+    if (this.skipping) return Promise.resolve(true);
+    const text = literal ? key : this.translate(key);
     this.speech = { key, text, remaining: ms ?? Math.max(1200, text.length * 60) };
     this.mode = 'talk';
     return new Promise((resolve) => { this.#sayDone = resolve; });
   }
 
   skipSpeech() {
+    this.#endSay();
+  }
+
+  // Cutscene fast-forward. Turning it on completes the current walk and line.
+  setSkipping(on) {
+    this.skipping = on;
+    if (!on) return;
+    if (this.#path.length) {
+      this.#jumpTo(this.#path.at(-1));
+      this.#endWalk(true);
+    }
     this.#endSay();
   }
 
@@ -106,6 +125,12 @@ export class Actor {
   fromJSON({ x, y, dir }) {
     this.teleport(x, y);
     if (dir) this.face(dir);
+  }
+
+  #jumpTo(point) {
+    this.faceTowards(point.x, point.y);
+    this.x = point.x;
+    this.y = point.y;
   }
 
   #step(dt) {

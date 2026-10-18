@@ -15,7 +15,9 @@ export class Timer {
 }
 
 export class Scheduler {
+  skipping = false;
   #timers = [];
+  #waits = new Set();
 
   // Run callback after `ms` of game time. Returns a Timer.
   after(ms, callback) {
@@ -29,19 +31,33 @@ export class Scheduler {
   }
 
   // Resolves after `ms` of game time. Pass an AbortSignal to reject early (cutscene skip).
+  // While `skipping` (a cutscene being skipped) waits resolve at once.
   wait(ms, signal) {
     return new Promise((resolve, reject) => {
       if (signal?.aborted) return reject(signal.reason);
+      if (this.skipping) return resolve();
+      const settle = () => {
+        timer.cancel();
+        signal?.removeEventListener('abort', onAbort);
+        this.#waits.delete(settle);
+        resolve();
+      };
       const onAbort = () => {
         timer.cancel();
+        this.#waits.delete(settle);
         reject(signal.reason);
       };
-      const timer = this.after(ms, () => {
-        signal?.removeEventListener('abort', onAbort);
-        resolve();
-      });
+      const timer = this.after(ms, settle);
+      this.#waits.add(settle);
       signal?.addEventListener('abort', onAbort, { once: true });
     });
+  }
+
+  // Cutscene fast-forward: turning it on settles every pending wait().
+  setSkipping(on) {
+    this.skipping = on;
+    if (!on) return;
+    for (const settle of [...this.#waits]) settle();
   }
 
   update(dt) {
