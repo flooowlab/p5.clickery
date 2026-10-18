@@ -14,6 +14,12 @@ export function drawDebugOverlay(p, { hotspots = [], room = null, camera, hovere
       for (const [x, y] of area.points) p.vertex(x, y);
       p.endShape(p.CLOSE);
     }
+    p.stroke(120, 255, 120, 200);
+    for (const o of room.obstacles) {
+      p.beginShape();
+      for (const [x, y] of o.points) p.vertex(x, y);
+      p.endShape(p.CLOSE);
+    }
   }
 
   for (const h of hotspots) {

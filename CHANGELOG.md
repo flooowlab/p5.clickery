@@ -11,3 +11,6 @@
   (`drawBackground`, `drawForeground`, `drawFade`).
 - P3 hotspots: `Hotspot`, `createHotspot`/`createHotspots`, providers (`polygon`, `colorMask`, `svg`), `HoverTracker`
   (`hover` event), `clientToLogical` pointer mapping and `drawDebugOverlay`. `rooms.html` is the demo.
+- P4 navigation and actors: `Navigator` (walkable areas minus obstacles, A* over a visibility graph, depth scale),
+  `scaleFromStops`, `sortByBaseline`, `Actor` (`walkTo`, `say`, `face`, `stop`), `AnimationState` (idle/walk/talk,
+  4 or 8 directions, mirrored flips), `I18n`. Room JSON gains `obstacles` and per-area `scale` stops.

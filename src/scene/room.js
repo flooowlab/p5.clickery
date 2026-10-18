@@ -7,7 +7,9 @@
 //   "layers": [{ "image": "far.png", "parallax": 0.5, "depth": "bg" },
 //              { "image": "pillar.png", "depth": "fg" }],
 //   "hotspots": [{ "id": "door", "name": "room.hall.door", "provider": "polygon", "points": [[10,10],...] }],
-//   "walkable": [{ "id": "floor", "points": [[0,250],[960,250],[960,360],[0,360]] }],
+//   "walkable": [{ "id": "floor", "points": [[0,250],[960,250],[960,360],[0,360]],
+//                  "scale": [[250, 0.6], [360, 1]] }],      // [y, scale] stops
+//   "obstacles": [{ "id": "table", "points": [[300,280],[400,280],[400,320],[300,320]] }],
 //   "starts": { "default": { "x": 100, "y": 300, "dir": "right" } }
 // }
 // Parallax: 1 moves with the camera (the room itself), 0 stays fixed on screen.
@@ -45,6 +47,12 @@ export function parseRoom(json) {
     return { ...area };
   });
 
+  const obstacles = (json.obstacles ?? []).map((o) => {
+    unique('obstacle', o.id);
+    if (!Array.isArray(o.points) || o.points.length < 3) throw new RangeError(`${where}: obstacle "${o.id}" needs 3+ points`);
+    return { ...o };
+  });
+
   const starts = json.starts ?? {};
   if (Object.keys(starts).length === 0) throw new Error(`${where}: needs at least one start position`);
   for (const [name, s] of Object.entries(starts)) {
@@ -60,6 +68,7 @@ export function parseRoom(json) {
     layers,
     hotspots,
     walkable,
+    obstacles,
     starts: structuredClone(starts),
   };
 }

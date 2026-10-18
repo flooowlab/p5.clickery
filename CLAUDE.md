@@ -88,10 +88,10 @@ Each phase ends with a working demo and passing tests.
 - **Done when:** each provider passes the same hit test on the same room.
 
 ### P4 · Navigation and actors
-- [ ] Walkable polygons with a navmesh and A* pathfinding.
-- [ ] Depth scale from the y coordinate, and z-sorting by baseline.
-- [ ] `Sprite` and `AnimationState` (idle, walk, talk; 4 or 8 directions; flip).
-- [ ] `Actor.walkTo(point)` returns a promise. `say(text)` shows a line and resolves when it ends.
+- [x] Walkable polygons with a navmesh and A* pathfinding.
+- [x] Depth scale from the y coordinate, and z-sorting by baseline.
+- [x] `Sprite` and `AnimationState` (idle, walk, talk; 4 or 8 directions; flip).
+- [x] `Actor.walkTo(point)` returns a promise. `say(text)` shows a line and resolves when it ends.
 - **Done when:** the hero walks around an obstacle and is scaled and sorted correctly.
 
 ### P5 · Interaction

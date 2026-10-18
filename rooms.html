@@ -14,11 +14,12 @@
 </head>
 <body>
   <div id="game"></div>
-  <p>Arrow keys scroll. Click the door to change room, click the crate to open it (state persists). D toggles the debug overlay.</p>
+  <p>Click the floor to walk (the hero goes around the table, shrinks with distance and passes behind it). Click the door to change room, the crate to open it. Arrow keys scroll, D toggles the debug overlay.</p>
   <p><button id="save">Save</button> <button id="load">Load</button></p>
   <script type="module">
     import {
       registerClickery, createCore, SceneManager, HoverTracker, createHotspots, clientToLogical,
+      Navigator, Actor, sortByBaseline,
       drawBackground, drawForeground, drawFade, drawDebugOverlay, saveToSlot, loadFromSlot,
     } from './src/index.js';
 
@@ -33,23 +34,25 @@
     mctx.fillRect(420, 90, 40, 120);
     const maskPixels = mctx.getImageData(0, 0, 960, 360);
 
+    const floor = { id: 'floor', points: [[0, 250], [960, 250], [960, 360], [0, 360]], scale: [[250, 0.55], [360, 1]] };
     const rooms = {
       hall: {
         id: 'hall', width: 960, height: 360, color: '#2d3a55',
-        starts: { default: { x: 100, y: 300 }, east: { x: 880, y: 300 } },
-        walkable: [{ id: 'floor', points: [[0, 250], [960, 250], [960, 360], [0, 360]] }],
+        starts: { default: { x: 100, y: 320 }, east: { x: 840, y: 320 } },
+        walkable: [floor],
+        obstacles: [{ id: 'table', points: [[520, 285], [660, 285], [660, 335], [520, 335]] }],
         hotspots: [
-          { id: 'door', provider: 'polygon', points: [[860, 120], [940, 120], [940, 250], [860, 250]], goTo: ['cellar', 'default'] },
-          { id: 'crate', provider: 'svg', d: 'M180 200 L280 200 L280 260 L180 260 Z' },
+          { id: 'door', provider: 'polygon', points: [[860, 120], [940, 120], [940, 250], [860, 250]], goTo: ['cellar', 'default'], walkTo: { x: 850, y: 300, dir: 'right' } },
+          { id: 'crate', provider: 'svg', d: 'M180 200 L280 200 L280 260 L180 260 Z', walkTo: { x: 230, y: 290, dir: 'up' } },
           { id: 'lamp', provider: 'colorMask', mask: 'mask', color: '#00ff00' },
         ],
       },
       cellar: {
         id: 'cellar', width: 960, height: 360, color: '#3a2d2d',
-        starts: { default: { x: 100, y: 300 }, east: { x: 880, y: 300 } },
-        walkable: [{ id: 'floor', points: [[0, 250], [960, 250], [960, 360], [0, 360]] }],
+        starts: { default: { x: 100, y: 320 }, east: { x: 840, y: 320 } },
+        walkable: [floor],
         hotspots: [
-          { id: 'door', provider: 'polygon', points: [[20, 120], [100, 120], [100, 250], [20, 250]], goTo: ['hall', 'east'] },
+          { id: 'door', provider: 'polygon', points: [[20, 120], [100, 120], [100, 250], [20, 250]], goTo: ['hall', 'east'], walkTo: { x: 110, y: 300, dir: 'left' } },
         ],
       },
     };
@@ -60,16 +63,35 @@
       loadRoom: async (id) => rooms[id],
     });
     const hover = new HoverTracker(core.events);
+    const hero = new Actor({ id: 'hero', speed: 140, directions: 4 });
     let hotspots = [];
-    core.events.on('room:enter', ({ room }) => {
+    core.events.on('room:enter', ({ room, start }) => {
       hotspots = createHotspots(room, { pixels: () => maskPixels });
       hover.setHotspots(hotspots);
+      hero.navigator = Navigator.fromRoom(room);
+      const s = room.starts[start];
+      hero.teleport(s.x, s.y);
     });
+    core.events.on('update', (dt) => hero.update(dt));
     core.loop.start();
     scene.goTo('hall');
+    window.demo = { core, scene, hero, hover }; // for poking at it from the console
 
     let debug = false;
     let pointer = null; // logical canvas coordinates
+    let acting = false;
+
+    async function click(world) {
+      const hit = hover.update(world.x, world.y);
+      if (!hit) { hero.walkTo(world); return; }
+      if (acting) return;
+      acting = true;
+      try {
+        if (hit.walkTo && !(await hero.walkTo(hit.walkTo))) return;
+        if (hit.id === 'crate') core.state.set('rooms.hall.crateOpen', !core.state.get('rooms.hall.crateOpen', false));
+        if (hit.goTo) await scene.goTo(...hit.goTo);
+      } finally { acting = false; }
+    }
 
     const sketch = (p) => {
       p.setup = () => {
@@ -78,13 +100,10 @@
         const toLogical = (e) => clientToLogical(e.clientX, e.clientY, canvas.elt.getBoundingClientRect(), VIEW_W, VIEW_H);
         canvas.elt.addEventListener('pointermove', (e) => { pointer = toLogical(e); });
         canvas.elt.addEventListener('pointerleave', () => { pointer = null; hover.clear(); });
-        canvas.elt.addEventListener('pointerdown', async (e) => {
+        canvas.elt.addEventListener('pointerdown', (e) => {
           pointer = toLogical(e);
           if (scene.busy || !scene.room) return;
-          const w = scene.camera.screenToWorld(pointer.x, pointer.y);
-          const hit = hover.update(w.x, w.y);
-          if (hit?.id === 'crate') core.state.set('rooms.hall.crateOpen', !core.state.get('rooms.hall.crateOpen', false));
-          if (hit?.goTo) await scene.goTo(...hit.goTo);
+          click(scene.camera.screenToWorld(pointer.x, pointer.y));
         });
       };
 
@@ -94,6 +113,7 @@
         const room = scene.room;
         if (!room) return;
         const cam = scene.camera;
+        cam.follow(hero.x, hero.y, p.deltaTime);
         if (p.keyIsDown(p.LEFT_ARROW)) cam.moveTo(cam.x - 6, cam.y);
         if (p.keyIsDown(p.RIGHT_ARROW)) cam.moveTo(cam.x + 6, cam.y);
         if (pointer && !scene.busy) {
@@ -115,20 +135,46 @@
           p.fill(250, 230, 120);
           p.rect(420 - cam.x, 90 - cam.y, 40, 120);
         }
+
+        // Things that can pass in front of or behind each other, sorted by their feet.
+        const drawables = [
+          { baseline: hero.baseline, draw() {
+            const s = hero.scale;
+            p.fill(240, 120, 90);
+            p.rect(hero.x - 14 * s - cam.x, hero.y - 70 * s - cam.y, 28 * s, 70 * s, 6);
+            p.fill(255);
+            p.rect(hero.x + (hero.dir === 'left' ? -10 : 2) * s - cam.x, hero.y - 62 * s - cam.y, 8 * s, 8 * s);
+          } },
+        ];
+        for (const o of room.obstacles) {
+          const ys = o.points.map((pt) => pt[1]);
+          drawables.push({ baseline: Math.max(...ys), draw() {
+            const xs = o.points.map((pt) => pt[0]);
+            p.fill(120, 90, 60);
+            p.rect(Math.min(...xs) - cam.x, Math.min(...ys) - 40 - cam.y, Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys) + 40);
+          } });
+        }
+        for (const d of sortByBaseline(drawables)) d.draw();
         drawForeground(p, room, cam);
 
         const h = hover.hovered;
         p.fill(255);
         p.textSize(14);
-        p.text(`${room.id}${h ? ` > ${h.id}` : ''}`, 8, 8);
+        p.text(`${room.id}${h ? ` > ${h.id}` : ''}  scale ${hero.scale.toFixed(2)}`, 8, 8);
         if (debug) drawDebugOverlay(p, { hotspots, room, camera: cam, hovered: h });
         drawFade(p, scene.fade);
       };
     };
 
-    document.getElementById('save').onclick = () => saveToSlot(core.state, 'rooms');
+    document.getElementById('save').onclick = () => {
+      core.state.set('hero', hero.toJSON());
+      saveToSlot(core.state, 'rooms');
+    };
     document.getElementById('load').onclick = async () => {
-      if (loadFromSlot(core.state, 'rooms')) await scene.restore();
+      if (!loadFromSlot(core.state, 'rooms')) return;
+      await scene.restore();
+      const saved = core.state.get('hero');
+      if (saved) hero.fromJSON(saved);
     };
 
     new p5(sketch, document.getElementById('game'));
