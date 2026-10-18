@@ -22,3 +22,8 @@
   `Cutscenes` (input lock, `skip()`, `skip(label)` with `cs.label()`), `once`/`firstLook`/`firstInteract`/`firstUse`,
   skip button helpers. `Scheduler`, `Fade` and `Actor` gain `setSkipping(bool)` (fast-forward); `Actor.say` gains `literal`.
   `SceneManager` gains an `onEntered` hook and accepts a `Scripts`/`Map`; `Interactor` takes `cutscenes` and exposes `context()`.
+- P7 dialogue: `DialogueRunner` interface (`next`, `choices`, `choose`, `vars`, `done`) with three adapters:
+  `createMarkdownRunner` (small own format), `createTwineRunner` (Twee 3 and Twison, links and `<<set>>` only) and
+  `createInkRunner` (wraps an inkjs `Story`: tags, external functions via `inkExternals`, `sync` variables with the state store).
+  `DialogueSession`, `SubtitleBar` (typewriter, text speed, advance and skip) and `ChoiceMenu`. `Interactor` takes `dialogue`
+  and is locked while one runs. `tools/compile-ink.mjs` compiles `.ink` to `.ink.json`. `inkjs` is a dev dependency only.

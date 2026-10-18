@@ -20,13 +20,14 @@ export class Interactor {
   onError = (err) => console.error(err);
   #token = 0;
 
-  constructor({ hero, state, events, inventory, hover, cutscenes = null, mode = 'smart', defaults = {} }) {
+  constructor({ hero, state, events, inventory, hover, cutscenes = null, dialogue = null, mode = 'smart', defaults = {} }) {
     this.hero = hero;
     this.state = state;
     this.events = events;
     this.inventory = inventory;
     this.hover = hover;
     this.cutscenes = cutscenes;
+    this.dialogue = dialogue;
     this.mode = mode;
     this.defaults = {
       interact: 'default.interact', look: 'default.look', use: 'default.use', combine: 'default.combine', ...defaults,
@@ -38,13 +39,13 @@ export class Interactor {
     this.handlers.set(id, { ...this.handlers.get(id), ...handlers });
   }
 
-  // Input is ignored during a handler, and during a cutscene.
+  // Input is ignored during a handler, a cutscene and a conversation.
   get busy() {
     return this.phase === 'act' || this.locked;
   }
 
   get locked() {
-    return this.cutscenes?.active ?? false;
+    return Boolean(this.cutscenes?.active || this.dialogue?.active);
   }
 
   select(item) {
@@ -159,6 +160,7 @@ export class Interactor {
       inventory: this.inventory,
       interactor: this,
       cutscenes: this.cutscenes,
+      dialogue: this.dialogue,
       say: (key, options) => this.hero.say(key, options),
       setEnabled: (hotspotId, enabled) => this.setHotspotEnabled(hotspotId, enabled),
     };

@@ -108,11 +108,11 @@ Each phase ends with a working demo and passing tests.
 - **Done when:** an opening sequence with walks, speech and a door opens in cutscene mode.
 
 ### P7 · Dialogue
-- [ ] `DialogueRunner` interface: `next()`, `choices()`, `choose(i)`, `vars`, `done`.
-- [ ] Markdown adapter. Syntax: `Speaker: line`, `* choice -> label`, `{flag}` conditions. Keep it small.
-- [ ] Ink adapter using `inkjs` on compiled `.ink.json`. Bind external functions (`giveItem`, `setFlag`). Sync variables with the state store. Read tags (`# speaker:`, `# sfx:`).
-- [ ] Twine adapter for Twee 3 and Twison JSON. Supports links and `<<set>>`-style variables only.
-- [ ] Subtitle bar and choice menu with text speed and skip.
+- [x] `DialogueRunner` interface: `next()`, `choices()`, `choose(i)`, `vars`, `done`.
+- [x] Markdown adapter. Syntax: `Speaker: line`, `* choice -> label`, `{flag}` conditions. Keep it small.
+- [x] Ink adapter using `inkjs` on compiled `.ink.json`. Bind external functions (`giveItem`, `setFlag`). Sync variables with the state store. Read tags (`# speaker:`, `# sfx:`).
+- [x] Twine adapter for Twee 3 and Twison JSON. Supports links and `<<set>>`-style variables only.
+- [x] Subtitle bar and choice menu with text speed and skip.
 - **Done when:** the same short conversation runs through all three adapters.
 
 ### P8 · UI, input and audio
