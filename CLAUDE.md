@@ -95,10 +95,10 @@ Each phase ends with a working demo and passing tests.
 - **Done when:** the hero walks around an obstacle and is scaled and sorted correctly.
 
 ### P5 · Interaction
-- [ ] Action model: a single smart action by default. A verb list is an option.
-- [ ] Actions are resolved per hotspot (`interact`, `look`, `use`). Missing handlers fall back to default responses.
-- [ ] Inventory with `give`, `remove`, and combine recipes.
-- [ ] Hover label, and tap-to-highlight then tap-to-act on touch. Long press to look.
+- [x] Action model: a single smart action by default. A verb list is an option.
+- [x] Actions are resolved per hotspot (`interact`, `look`, `use`). Missing handlers fall back to default responses.
+- [x] Inventory with `give`, `remove`, and combine recipes.
+- [x] Hover label, and tap-to-highlight then tap-to-act on touch. Long press to look.
 - **Done when:** a three-object puzzle (pick, combine, use) works with mouse and touch.
 
 ### P6 · Scripting

@@ -5,6 +5,8 @@ export * from './scene/index.js';
 export * from './hit/index.js';
 export * from './nav/index.js';
 export * from './actor/index.js';
+export * from './interact/index.js';
+export { InventoryBar, drawHoverLabel } from './ui/inventory-bar.js';
 export { clientToLogical } from './ui/pointer.js';
 export { drawDebugOverlay } from './debug/overlay.js';
 
