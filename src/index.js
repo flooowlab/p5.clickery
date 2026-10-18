@@ -1,6 +1,7 @@
 export const VERSION = '0.0.1';
 
 export * from './core/index.js';
+export * from './scene/index.js';
 
 // p5 addon: adds the p5.clickery namespace and createGameCanvas() to every sketch.
 export function clickeryAddon(p5, fn) {
