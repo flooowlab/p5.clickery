@@ -20,7 +20,7 @@ export class Interactor {
   onError = (err) => console.error(err);
   #token = 0;
 
-  constructor({ hero, state, events, inventory, hover, cutscenes = null, dialogue = null, mode = 'smart', defaults = {} }) {
+  constructor({ hero, state, events, inventory, hover, cutscenes = null, dialogue = null, audio = null, mode = 'smart', defaults = {} }) {
     this.hero = hero;
     this.state = state;
     this.events = events;
@@ -28,6 +28,7 @@ export class Interactor {
     this.hover = hover;
     this.cutscenes = cutscenes;
     this.dialogue = dialogue;
+    this.audio = audio;
     this.mode = mode;
     this.defaults = {
       interact: 'default.interact', look: 'default.look', use: 'default.use', combine: 'default.combine', ...defaults,
@@ -161,6 +162,7 @@ export class Interactor {
       interactor: this,
       cutscenes: this.cutscenes,
       dialogue: this.dialogue,
+      audio: this.audio,
       say: (key, options) => this.hero.say(key, options),
       setEnabled: (hotspotId, enabled) => this.setHotspotEnabled(hotspotId, enabled),
     };

@@ -27,3 +27,8 @@
   `createInkRunner` (wraps an inkjs `Story`: tags, external functions via `inkExternals`, `sync` variables with the state store).
   `DialogueSession`, `SubtitleBar` (typewriter, text speed, advance and skip) and `ChoiceMenu`. `Interactor` takes `dialogue`
   and is locked while one runs. `tools/compile-ink.mjs` compiles `.ink` to `.ink.json`. `inkjs` is a dev dependency only.
+- P8 UI, input and audio: `fitLetterbox` and `LetterboxScaler` (letterboxed scaling with pointer mapping), `Settings`
+  (text speed, subtitles, volumes; saved separately from save games) and `bindTextSettings`, `AudioManager`
+  (music with crossfade, sfx, voice, volume buses, `attach` for room music, event sfx and dialogue `sfx` tags).
+  Room JSON gains an optional `music` field. `Interactor` takes `audio` and passes it to handlers as `ctx.audio`.
+  `tools/make-demo-audio.mjs` generates the demo sounds.

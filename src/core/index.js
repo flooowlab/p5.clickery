@@ -7,6 +7,7 @@ import { I18n } from './i18n.js';
 export { EventBus, Scheduler, GameLoop, StateStore, I18n };
 export { Timer } from './scheduler.js';
 export * from './save.js';
+export { Settings, bindTextSettings } from './settings.js';
 
 // Wires the core pieces together: one bus, one scheduler, one store, one loop.
 export function createCore(loopOptions = {}) {

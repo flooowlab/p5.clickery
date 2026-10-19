@@ -116,9 +116,9 @@ Each phase ends with a working demo and passing tests.
 - **Done when:** the same short conversation runs through all three adapters.
 
 ### P8 · UI, input and audio
-- [ ] Letterboxed responsive scaling with a fixed logical resolution.
-- [ ] Music per room with crossfade. SFX triggered by actions.
-- [ ] Settings: text speed, subtitles on or off, audio volumes.
+- [x] Letterboxed responsive scaling with a fixed logical resolution.
+- [x] Music per room with crossfade. SFX triggered by actions.
+- [x] Settings: text speed, subtitles on or off, audio volumes.
 - **Done when:** the demo plays correctly at phone width and desktop width.
 
 ### P9 · Level editor (`tools/`)
