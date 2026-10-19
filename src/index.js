@@ -1,4 +1,4 @@
-export const VERSION = '0.0.1';
+export const VERSION = '0.1.0';
 
 export * from './core/index.js';
 export * from './scene/index.js';
@@ -8,6 +8,8 @@ export * from './actor/index.js';
 export * from './interact/index.js';
 export * from './script/index.js';
 export * from './dialogue/index.js';
+export { fitLetterbox, LetterboxScaler } from './ui/scaling.js';
+export * from './audio/index.js';
 export { SubtitleBar } from './ui/subtitles.js';
 export { ChoiceMenu } from './ui/choice-menu.js';
 export { skipButtonRect, hitSkipButton, drawSkipButton } from './ui/skip-button.js';

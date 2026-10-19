@@ -10,14 +10,15 @@ This guide is for people who already know a little p5.js (`setup`, `draw`, drawi
 
 1. [What you get](#what-you-get)
 2. [Running the examples](#running-the-examples)
-3. [Your first game in 10 steps](#your-first-game-in-10-steps)
+3. [Your first game in 10 steps](#your-first-game-in-10-steps) (and the [format reference](docs/reference.md))
 4. [Words you will see](#words-you-will-see)
 5. [Guide](#guide)
-   [Setup](#1-setup) · [Events, timers and state](#2-events-timers-and-state) · [Text](#3-text-everything-is-a-key) · [Rooms](#4-rooms) · [Hotspots](#5-hotspots-clickable-areas) · [Walking and actors](#6-walking-and-actors) · [Items and actions](#7-items-and-actions) · [Scripts and cutscenes](#8-scripts-and-cutscenes) · [Dialogue](#9-dialogue) · [Saving](#10-saving-and-loading) · [Debugging](#11-debugging)
-6. [Recipes](#recipes)
-7. [Troubleshooting](#troubleshooting)
-8. [Cheat sheet](#cheat-sheet)
-9. [Not in the library yet](#not-in-the-library-yet)
+   [Setup](#1-setup) · [Events, timers and state](#2-events-timers-and-state) · [Text](#3-text-everything-is-a-key) · [Rooms](#4-rooms) · [Hotspots](#5-hotspots-clickable-areas) · [Walking and actors](#6-walking-and-actors) · [Items and actions](#7-items-and-actions) · [Scripts and cutscenes](#8-scripts-and-cutscenes) · [Dialogue](#9-dialogue) · [Saving](#10-saving-and-loading) · [Fitting the window](#11-fitting-the-window) · [Sound](#12-sound-and-music) · [Settings](#13-player-settings) · [Debugging](#14-debugging)
+6. [Making rooms with the editor](#making-rooms-with-the-editor)
+7. [Recipes](#recipes)
+8. [Troubleshooting](#troubleshooting)
+9. [Cheat sheet](#cheat-sheet)
+10. [Good to know](#good-to-know)
 
 ---
 
@@ -34,6 +35,8 @@ This guide is for people who already know a little p5.js (`setup`, `draw`, drawi
 | Play a cutscene the player can skip | `Cutscenes` |
 | Run conversations | Markdown, Twine or Ink dialogue |
 | Save and load | `saveToSlot`, `loadFromSlot` |
+| Fit any window or phone, play music and sound, let players change settings | `LetterboxScaler`, `AudioManager`, `Settings` |
+| Draw rooms with the mouse instead of typing coordinates | the room editor in `tools/editor/` |
 
 It does **not** use p5.play and has no physics. You draw everything with normal p5.js calls; the library tells you *where* things are and *what happened*.
 
@@ -54,7 +57,9 @@ then visit `http://localhost:8000/quickstart.html`.
 | `quickstart.html` | The smallest working game: one room, a hero, one sign. **Start here.** |
 | `index.html` | The game loop, timers and state with save/load |
 | `rooms.html` | Two rooms, scrolling, an obstacle to walk around, depth scaling, three kinds of hotspot, debug overlay (press `D`) |
-| `adventure.html` | A complete little puzzle: items, combining, an opening cutscene, a guard to talk to. Add `?adapter=ink` or `?adapter=twine` to change the dialogue format |
+| `tools/editor/index.html` | The room editor: load a picture, draw hotspots and floors, export the room JSON, preview it |
+| `examples/lighthouse/index.html` | **A complete small game**: three rooms, a puzzle, an Ink conversation, a skippable ending, save and load. Read its source to see how the parts fit together (its logic is in `game.js`, with no drawing code) |
+| `adventure.html` | A complete little puzzle: items, combining, an opening cutscene, a guard to talk to, two rooms with music, sound effects, a settings panel, and scaling to any window or phone. Add `?adapter=ink` or `?adapter=twine` to change the dialogue format |
 
 ---
 
@@ -880,7 +885,106 @@ Everything in `core.state` is saved: flags, variables, inventory, which hotspots
 
 A corrupt or too-new save file throws an error without changing your game.
 
-### 11. Debugging
+### 11. Fitting the window
+
+The game has one fixed *logical* size (say 640 × 360). `LetterboxScaler` scales the canvas to fit its container without stretching it. Spare space becomes bars at the sides (wide window) or top and bottom (a phone held upright).
+
+```html
+<style>
+  html, body { height: 100%; margin: 0; }
+  #stage { width: 100%; height: 100%; background: #000; }   /* the bars show this colour */
+</style>
+<div id="stage"></div>
+```
+
+```js
+p.setup = () => {
+  const canvas = p.createGameCanvas(640, 360);
+  const scaler = new LetterboxScaler({ canvas: canvas.elt, container: document.getElementById('stage'), width: 640, height: 360 }).start();
+
+  const at = (e) => scaler.toLogical(e.clientX, e.clientY);      // use this instead of clientToLogical
+  canvas.elt.addEventListener('pointerdown', (e) => pointer.down({ ...at(e), pointerType: e.pointerType, button: e.button }));
+};
+```
+
+`start()` fits the canvas now and again whenever the window is resized or rotated. Options: `integer: true` keeps whole-number scales (crisp pixel art), `maxScale` caps the size. `scaler.layout` has the current `{ scale, width, height, offsetX, offsetY }` and `scaler.inside(point)` tells you whether a logical point is on the game rather than a bar. The pure function `fitLetterbox(containerW, containerH, logicalW, logicalH, options)` does the maths if you want to handle layout yourself.
+
+Add `<meta name="viewport" content="width=device-width, initial-scale=1">` for phones, and `touch-action: none` on the canvas so dragging does not scroll the page.
+
+### 12. Sound and music
+
+```js
+const audio = new AudioManager({ settings });          // settings: see the next section (optional)
+audio.register({
+  'music-yard': 'audio/yard.ogg',                      // any format the browser plays: wav, ogg, mp3
+  'music-cellar': 'audio/cellar.ogg',
+  pickup: 'audio/pickup.wav',
+});
+await audio.loadAll();                                 // decode everything before the game starts
+audio.unlockOnGesture(window);                         // browsers only start sound after a first click or tap
+```
+
+**Music.** Give a room a `music` field with a sound id. Entering the room crossfades from the old track to the new one:
+
+```js
+{ id: 'yard',   music: 'music-yard',   /* ... */ }     // plays 'music-yard'
+{ id: 'cellar', music: 'music-cellar', /* ... */ }
+{ id: 'attic',  music: null,           /* ... */ }     // silence
+{ id: 'porch',                         /* ... */ }     // no field: keep whatever is playing
+```
+
+```js
+audio.attach(core.events);                             // makes room music (and dialogue sfx tags) work
+audio.playMusic('music-yard', { fadeMs: 2000 });       // or start music yourself
+audio.stopMusic(1000);
+audio.musicId;                                         // the track now playing, or null
+```
+
+**Sound effects.** Play one directly, or map events to sounds:
+
+```js
+audio.playSfx('pickup');                               // returns { stop() }
+audio.playSfx('pickup', { volume: 0.5, loop: false });
+
+audio.attach(core.events, {
+  sfx: {
+    'inventory:add': 'pickup',                         // an event name -> a sound id
+    'room:exit': 'door',
+    action: (e) => (e.verb === 'interact' && e.handled ? 'click' : null),   // or a function; null = no sound
+  },
+});
+```
+
+Inside a handler: `ctx.audio.playSfx('click')` (pass `audio` when creating the `Interactor`). In dialogue, a line tagged `# sfx:alarm` plays the sound `alarm` automatically.
+
+If you play a sound that is not loaded yet you get one console warning and no sound, so always `await audio.loadAll()` first. `audio.playVoice(id)` works like `playSfx` but uses the voice volume.
+
+### 13. Player settings
+
+```js
+const settings = new Settings();                       // remembers choices in the browser, separately from save games
+settings.load();                                       // read what the player chose last time
+
+settings.set('musicVolume', 0.4);                      // numbers are kept inside their range
+settings.get('musicVolume');
+settings.onChange((name, value) => console.log(name, 'is now', value));
+settings.reset();
+
+bindTextSettings(settings, { subtitles, actors: [hero] });   // text speed and subtitles take effect immediately
+```
+
+| Setting | Values | Default | Effect |
+| --- | --- | --- | --- |
+| `textSpeed` | 0.25 to 4 | 1 | Subtitles type and stay for less time; actors' lines are shorter |
+| `subtitles` | true / false | true | Hides the subtitle box (lines still pace themselves) |
+| `masterVolume` | 0 to 1 | 1 | Everything |
+| `musicVolume` | 0 to 1 | 0.7 | Music |
+| `sfxVolume` | 0 to 1 | 1 | Sound effects |
+| `voiceVolume` | 0 to 1 | 1 | Voice |
+
+The audio volumes follow the settings by themselves when you give the `AudioManager` your `Settings`. Hook sliders to them with `settings.set(...)`; `adventure.html` has a working panel.
+
+### 14. Debugging
 
 ```js
 drawDebugOverlay(p, { hotspots: hover.hotspots, room: scene.room, camera: scene.camera, hovered: hover.hovered });
@@ -889,6 +993,43 @@ drawDebugOverlay(p, { hotspots: hover.hotspots, room: scene.room, camera: scene.
 Draw it last in `p.draw`, perhaps toggled with a key (the demos use `D`). It outlines hotspots in red (yellow when hovered), walkable areas in blue and obstacles in green. If clicks are not doing what you expect, this shows you why.
 
 ---
+
+## Making rooms with the editor
+
+Writing coordinates by hand gets old quickly. The room editor is a separate page (`tools/editor/index.html`, served like the other examples) where you load your room picture, mark out the clickable areas and the floor with the mouse, and export the room JSON that your game loads.
+
+**A first room, in about a minute**
+
+1. Open `tools/editor/index.html` and press **Open image…** (or **Sample room** to try it out).
+2. Choose the shape type in **New shape**: *walkable* for the floor, *hotspot* for things to click, *obstacle* for holes in the floor.
+3. Pick the **Wand** and click a coloured area of the picture. The selected pixels turn pink. **Shift**-click adds more, **Alt**-click takes some away, **Ctrl**-click selects that colour everywhere instead of only the connected area. The **Tolerance** slider decides how different a colour may be and still count.
+4. Press **Enter** (or **Create from selection**). The selection becomes a polygon. **Detail** controls how many corners it gets: lower is more exact, higher is simpler.
+   * For a *walkable* area, anything inside it that is not floor (a table, a pillar) becomes an *obstacle* automatically.
+5. For shapes the wand cannot find, use the **Polygon** tool: click the corners, then click the first corner again (or double-click, or press Enter) to finish.
+6. Name your shapes in the right-hand panel. A hotspot's id is what you use in `interactor.register('door', ...)`; its *name key* is the text shown on hover (it defaults to `obj.<id>`).
+7. Use the **Walk-to** tool: select a hotspot, then click where the hero should stand to use it. Use the **Start** tool to place where the hero appears (you can have several, named, for different entrances).
+8. Press **Preview** to try the room in the real engine: click to walk, hover and click the hotspots. Fix anything the **Check** list in the panel warns about.
+9. Press **Export…** and save the JSON as, for example, `rooms/hall.json`.
+
+**Using the exported room**
+
+```js
+const scene = new SceneManager({
+  ...core, viewWidth: 640, viewHeight: 360,
+  loadRoom: async (id) => (await fetch(`rooms/${id}.json`)).json(),   // the editor's file, unchanged
+});
+await scene.goTo('hall');
+```
+
+The picture is named in the JSON (`"background": "hall.png"`); give `drawBackground` the loaded image under that name (see [Drawing a room](#4-rooms)). **Download text keys** gives you a starter list of the hotspot names to put into `core.i18n`.
+
+**Editing afterwards**
+
+* **Select** tool: click a shape; drag a corner to move it, drag the inside to move the whole shape, **Alt**-click a corner to delete it, double-click an edge to add a corner, **Delete** removes the shape.
+* Scroll to zoom; drag with the middle or right mouse button (or hold Space) to pan; **F** fits the picture to the window.
+* **Ctrl+Z** / **Ctrl+Y** undo and redo. Your work is kept in the browser automatically, so closing the tab does not lose it.
+* **Import…** opens a room JSON again (also one written by hand). Hotspots that use the `svg` or `colorMask` providers are kept exactly as they are; the editor only edits polygon hotspots.
+* The editor needs a picture with fairly flat colours for the wand to work well: paint or export the floor, door and so on in distinct colours, or just use the Polygon tool.
 
 ## Recipes
 
@@ -995,18 +1136,21 @@ core.scheduler.every(1000, () => core.state.set('vars.seconds', core.state.get('
 
 **Saving**: `saveToSlot` · `loadFromSlot` · `deleteSlot` · `exportToFile` · `importFromFile`
 
+**Window, sound, settings**: `new LetterboxScaler({...}).start()` · `fitLetterbox` · `new AudioManager({ settings })` · `register` · `loadAll` · `playMusic` · `playSfx` · `attach` · `new Settings()` · `bindTextSettings`
+
 **Debug**: `drawDebugOverlay`
 
 All of these are exported from `src/index.js`.
 
 ---
 
-## Not in the library yet
+## Good to know
 
-Planned but not available yet, so you will need your own code for now:
+* The editor exports polygon hotspots. Hotspots built from an SVG file or a colour-mask picture are written by hand in the room JSON (the editor keeps them when you import such a file).
+* Dialogue text lives in the dialogue files (Markdown, Twine, Ink); everything else the player reads is a text key in `core.i18n`.
+* TypeScript type definitions are not included yet.
 
-* Automatic scaling of the canvas to the window (letterboxing). For now, size the canvas with CSS, as the demos do (`max-width: 100%`).
-* Music, sound effects and volume settings. Dialogue `sfx` tags are delivered to you as events, ready to hook up to whatever sound code you use.
-* A level editor to draw rooms instead of writing coordinates by hand.
+* The exact format of rooms, hotspots, scripts, dialogue files, state and saves is in [docs/reference.md](docs/reference.md).
+* Licence: [MIT](LICENSE).
 
 See [CHANGELOG.md](CHANGELOG.md) for what each version adds.
