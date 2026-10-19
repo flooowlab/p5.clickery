@@ -65,54 +65,54 @@ Each phase ends with a working demo and passing tests.
 - [x] Add `package.json` (ES module, p5 pinned to 2.3.4), `.gitignore`, and a demo `index.html` that loads p5 2.x from `node_modules`.
 - [x] Register the addon (`registerClickery`) and create a fixed-size canvas in instance mode (`createGameCanvas`).
 - [x] Tests run with `npm test` (Node's built-in runner, see Stack decisions).
-- [ ] Check the demo in a browser. Not yet done: no browser was available in the build environment.
+- [x] Check the demo in a browser.
 
 ### P1 · Core
-- [ ] Game loop with delta time and a pause flag.
-- [ ] Event bus (`on`, `off`, `emit`).
-- [ ] Scheduler and `Timer` (`wait(ms)` returns a promise).
-- [ ] State store with `get`, `set`, `watch`, `toJSON`, `fromJSON`.
-- [ ] Save and load to localStorage, plus file export and import.
+- [x] Game loop with delta time and a pause flag.
+- [x] Event bus (`on`, `off`, `emit`).
+- [x] Scheduler and `Timer` (`wait(ms)` returns a promise).
+- [x] State store with `get`, `set`, `watch`, `toJSON`, `fromJSON`.
+- [x] Save and load to localStorage, plus file export and import.
 - **Done when:** state round-trips through save and load in a test.
 
 ### P2 · Scenes
-- [ ] Room JSON format: size, background, layers, hotspots, walkable areas, start positions.
-- [ ] Camera scrolling for rooms wider than the screen. Parallax layers follow the camera.
-- [ ] Room enter and exit hooks, and fade transitions.
+- [x] Room JSON format: size, background, layers, hotspots, walkable areas, start positions.
+- [x] Camera scrolling for rooms wider than the screen. Parallax layers follow the camera.
+- [x] Room enter and exit hooks, and fade transitions.
 - **Done when:** the demo walks between two rooms and state persists across the change.
 
 ### P3 · Hotspots
-- [ ] `Hotspot` class with the three providers above.
-- [ ] Hover detection gives the hovered hotspot id to the interaction layer.
-- [ ] Debug overlay draws hotspot shapes and hit areas.
+- [x] `Hotspot` class with the three providers above.
+- [x] Hover detection gives the hovered hotspot id to the interaction layer.
+- [x] Debug overlay draws hotspot shapes and hit areas.
 - **Done when:** each provider passes the same hit test on the same room.
 
 ### P4 · Navigation and actors
-- [ ] Walkable polygons with a navmesh and A* pathfinding.
-- [ ] Depth scale from the y coordinate, and z-sorting by baseline.
-- [ ] `Sprite` and `AnimationState` (idle, walk, talk; 4 or 8 directions; flip).
-- [ ] `Actor.walkTo(point)` returns a promise. `say(text)` shows a line and resolves when it ends.
+- [x] Walkable polygons with a navmesh and A* pathfinding.
+- [x] Depth scale from the y coordinate, and z-sorting by baseline.
+- [x] `Sprite` and `AnimationState` (idle, walk, talk; 4 or 8 directions; flip).
+- [x] `Actor.walkTo(point)` returns a promise. `say(text)` shows a line and resolves when it ends.
 - **Done when:** the hero walks around an obstacle and is scaled and sorted correctly.
 
 ### P5 · Interaction
-- [ ] Action model: a single smart action by default. A verb list is an option.
-- [ ] Actions are resolved per hotspot (`interact`, `look`, `use`). Missing handlers fall back to default responses.
-- [ ] Inventory with `give`, `remove`, and combine recipes.
-- [ ] Hover label, and tap-to-highlight then tap-to-act on touch. Long press to look.
+- [x] Action model: a single smart action by default. A verb list is an option.
+- [x] Actions are resolved per hotspot (`interact`, `look`, `use`). Missing handlers fall back to default responses.
+- [x] Inventory with `give`, `remove`, and combine recipes.
+- [x] Hover label, and tap-to-highlight then tap-to-act on touch. Long press to look.
 - **Done when:** a three-object puzzle (pick, combine, use) works with mouse and touch.
 
 ### P6 · Scripting
-- [ ] Per-object script files keyed by object id, with `onInteract`, `onLook`, `onUse`, `onEnter`.
-- [ ] Cutscene mode: input lock, skip button, and a `skipTo` label.
-- [ ] Helpers: `firstLook`, `firstUse`, which run once and store a flag.
+- [x] Per-object script files keyed by object id, with `onInteract`, `onLook`, `onUse`, `onEnter`.
+- [x] Cutscene mode: input lock, skip button, and a `skipTo` label.
+- [x] Helpers: `firstLook`, `firstUse`, which run once and store a flag.
 - **Done when:** an opening sequence with walks, speech and a door opens in cutscene mode.
 
 ### P7 · Dialogue
-- [ ] `DialogueRunner` interface: `next()`, `choices()`, `choose(i)`, `vars`, `done`.
-- [ ] Markdown adapter. Syntax: `Speaker: line`, `* choice -> label`, `{flag}` conditions. Keep it small.
-- [ ] Ink adapter using `inkjs` on compiled `.ink.json`. Bind external functions (`giveItem`, `setFlag`). Sync variables with the state store. Read tags (`# speaker:`, `# sfx:`).
-- [ ] Twine adapter for Twee 3 and Twison JSON. Supports links and `<<set>>`-style variables only.
-- [ ] Subtitle bar and choice menu with text speed and skip.
+- [x] `DialogueRunner` interface: `next()`, `choices()`, `choose(i)`, `vars`, `done`.
+- [x] Markdown adapter. Syntax: `Speaker: line`, `* choice -> label`, `{flag}` conditions. Keep it small.
+- [x] Ink adapter using `inkjs` on compiled `.ink.json`. Bind external functions (`giveItem`, `setFlag`). Sync variables with the state store. Read tags (`# speaker:`, `# sfx:`).
+- [x] Twine adapter for Twee 3 and Twison JSON. Supports links and `<<set>>`-style variables only.
+- [x] Subtitle bar and choice menu with text speed and skip.
 - **Done when:** the same short conversation runs through all three adapters.
 
 ### P8 · UI, input and audio

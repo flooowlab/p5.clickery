@@ -1,5 +1,20 @@
 export const VERSION = '0.0.1';
 
+export * from './core/index.js';
+export * from './scene/index.js';
+export * from './hit/index.js';
+export * from './nav/index.js';
+export * from './actor/index.js';
+export * from './interact/index.js';
+export * from './script/index.js';
+export * from './dialogue/index.js';
+export { SubtitleBar } from './ui/subtitles.js';
+export { ChoiceMenu } from './ui/choice-menu.js';
+export { skipButtonRect, hitSkipButton, drawSkipButton } from './ui/skip-button.js';
+export { InventoryBar, drawHoverLabel } from './ui/inventory-bar.js';
+export { clientToLogical } from './ui/pointer.js';
+export { drawDebugOverlay } from './debug/overlay.js';
+
 // p5 addon: adds the p5.clickery namespace and createGameCanvas() to every sketch.
 export function clickeryAddon(p5, fn) {
   p5.clickery = { version: VERSION };

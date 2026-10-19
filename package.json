@@ -11,5 +11,8 @@
   },
   "dependencies": {
     "p5": "2.3.4"
+  },
+  "devDependencies": {
+    "inkjs": "^2.4.0"
   }
 }
