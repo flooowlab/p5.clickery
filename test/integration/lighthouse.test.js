@@ -2,12 +2,12 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { Story } from 'inkjs/full';
-import { createGame, ROOMS } from '../examples/lighthouse/game.js';
-import { parseRoom } from '../src/index.js';
+import { createGame, ROOMS } from '../../examples/lighthouse/game.js';
+import { parseRoom } from '../../src/index.js';
 
 // The Lighthouse example doubles as the library's integration test: the whole game is
 // played through the same objects a player's clicks go through.
-const root = new URL('../examples/lighthouse/', import.meta.url);
+const root = new URL('../../examples/lighthouse/', import.meta.url);
 const loadText = async (path) => fs.readFileSync(new URL(path, root), 'utf8');
 const loadJson = async (path) => JSON.parse(await loadText(path));
 

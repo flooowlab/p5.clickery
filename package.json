@@ -37,7 +37,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test \"test/**/*.test.js\""
   },
   "peerDependencies": {
     "p5": ">=2.0.0 <3"

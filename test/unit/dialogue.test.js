@@ -5,7 +5,7 @@ import { Compiler } from 'inkjs/full';
 import {
   createMarkdownRunner, parseMarkdown, createTwineRunner, parseTwee, parseTwison, createInkRunner, inkExternals,
   splitSpeaker, parseTags, StateStore, EventBus, Inventory, SubtitleBar, ChoiceMenu, DialogueSession, Interactor,
-} from '../src/index.js';
+} from '../../src/index.js';
 
 // ---- the same short conversation, written three ways ----
 
@@ -54,7 +54,7 @@ const TWISON = {
   ],
 };
 
-const inkStory = () => new Compiler(fs.readFileSync(new URL('./fixtures/guard.ink', import.meta.url), 'utf8')).Compile();
+const inkStory = () => new Compiler(fs.readFileSync(new URL('../fixtures/guard.ink', import.meta.url), 'utf8')).Compile();
 const inkRunner = (options = {}) => createInkRunner(inkStory(), { externals: { giveItem: () => {} }, ...options });
 
 const adapters = {

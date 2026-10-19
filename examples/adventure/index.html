@@ -17,7 +17,7 @@
     .row input[type=range] { width: 110px; }
     #panel p { margin: 6px 0; }
   </style>
-  <script src="node_modules/p5/lib/p5.min.js"></script>
+  <script src="../../node_modules/p5/lib/p5.min.js"></script>
 </head>
 <body>
   <div id="stage"></div>
@@ -43,7 +43,7 @@
       SubtitleBar, ChoiceMenu, DialogueSession, createMarkdownRunner, createTwineRunner, createInkRunner,
       LetterboxScaler, Settings, bindTextSettings, AudioManager,
       drawBackground, drawFade, drawDebugOverlay, drawHoverLabel,
-    } from './src/index.js';
+    } from '../../src/index.js';
 
     registerClickery(p5);
     const VIEW_W = 640, VIEW_H = 360;
@@ -72,8 +72,8 @@
     settings.load();
     const audio = new AudioManager({ settings });
     audio.register({
-      'music-yard': 'demo/audio/music-yard.wav', 'music-cellar': 'demo/audio/music-cellar.wav',
-      pickup: 'demo/audio/pickup.wav', click: 'demo/audio/click.wav', alarm: 'demo/audio/alarm.wav', door: 'demo/audio/door.wav',
+      'music-yard': '../assets/audio/music-yard.wav', 'music-cellar': '../assets/audio/music-cellar.wav',
+      pickup: '../assets/audio/pickup.wav', click: '../assets/audio/click.wav', alarm: '../assets/audio/alarm.wav', door: '../assets/audio/door.wav',
     });
     try { await audio.loadAll(); } catch (err) { console.warn('audio failed to load, continuing without it', err); }
     audio.unlockOnGesture(window);
@@ -146,8 +146,8 @@
     // The same conversation in three formats; pick one with ?adapter=markdown|twine|ink.
     const adapter = new URLSearchParams(location.search).get('adapter') ?? 'markdown';
     const text = (f) => fetch(f).then((r) => r.text());
-    const source = adapter === 'ink' ? await fetch('demo/guard.ink.json').then((r) => r.text()) : await text(adapter === 'twine' ? 'demo/guard.twee' : 'demo/guard.md');
-    const inkStory = adapter === 'ink' ? new (await import('./node_modules/inkjs/dist/ink.mjs')).Story(source) : null;
+    const source = adapter === 'ink' ? await fetch('dialogue/guard.ink.json').then((r) => r.text()) : await text(adapter === 'twine' ? 'dialogue/guard.twee' : 'dialogue/guard.md');
+    const inkStory = adapter === 'ink' ? new (await import('../../node_modules/inkjs/dist/ink.mjs')).Story(source) : null;
     const newConversation = () => {
       const options = { state: core.state };
       if (adapter === 'twine') return createTwineRunner(source, options);

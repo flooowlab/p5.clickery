@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   EventBus, Hotspot, HoverTracker, createHotspot, createHotspots, parseRoom,
   pointInPolygon, parseColor, parseSvgPaths, clientToLogical,
-} from '../src/index.js';
+} from '../../src/index.js';
 
 // One room, one shape: a 100x100 box. The same shape is described three ways.
 const W = 400;

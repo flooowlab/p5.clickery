@@ -1,5 +1,5 @@
-// Writes the small placeholder sounds used by adventure.html into demo/audio:
-//   node tools/make-demo-audio.mjs
+// Writes the small placeholder sounds shared by the examples into examples/assets/audio:
+//   node tools/make-example-audio.mjs
 // Plain 16-bit mono WAV, synthesised from sine waves, so the demo needs no audio assets.
 import fs from 'node:fs';
 
@@ -45,8 +45,8 @@ const click = render(0.06, (t) => 0.35 * tone(900, t) * Math.exp(-t * 60));
 const alarm = render(0.6, (t) => 0.3 * tone(t % 0.3 < 0.15 ? 880 : 660, t) * Math.min(1, (0.6 - t) * 8));
 const door = render(0.5, (t, i) => 0.4 * (Math.sin(i * 12.9898) * 0.5 + tone(90 - 60 * t, t)) * Math.exp(-t * 7));
 
-fs.mkdirSync('demo/audio', { recursive: true });
+fs.mkdirSync('examples/assets/audio', { recursive: true });
 for (const [name, samples] of Object.entries({ 'music-yard': yard, 'music-cellar': cellar, pickup, click, alarm, door })) {
-  fs.writeFileSync(`demo/audio/${name}.wav`, wav(samples));
-  console.log(`demo/audio/${name}.wav`, `${(samples.length / RATE).toFixed(2)}s`);
+  fs.writeFileSync(`examples/assets/audio/${name}.wav`, wav(samples));
+  console.log(`examples/assets/audio/${name}.wav`, `${(samples.length / RATE).toFixed(2)}s`);
 }

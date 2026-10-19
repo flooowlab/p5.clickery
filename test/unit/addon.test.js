@@ -1,6 +1,6 @@
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { clickeryAddon, registerClickery, VERSION } from '../src/index.js';
+import { clickeryAddon, registerClickery, VERSION } from '../../src/index.js';
 
 describe('clickeryAddon', () => {
   it('exposes the namespace on the p5 constructor', () => {

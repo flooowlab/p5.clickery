@@ -39,6 +39,20 @@ debug/     overlay (hotspots, walkable polygons, paths) and state inspector
 tools/     level editor, a separate page that exports JSON
 ```
 
+### Repository layout
+
+```text
+src/        the library (src/index.js exports everything)
+examples/   runnable pages, one folder each, learning order: quickstart, core, rooms, adventure, lighthouse
+            examples/index.html lists them; examples/assets/ holds assets shared between examples
+tools/      editor/ (room editor page) and Node scripts: compile-ink.mjs, make-example-audio.mjs, make-sample-room.mjs
+docs/       reference.md (formats: room, hotspot, items, scripts, dialogue, state, events, saves)
+test/       unit/ (one file per src/ folder), tools/, integration/ (Lighthouse playthrough), release/, fixtures/
+```
+
+New runnable pages go in their own `examples/<name>/` folder and get a card in `examples/index.html`. Pages load p5 and the
+library with `../../` paths. Tests for a `src/<area>/` module go in `test/unit/<area>.test.js`.
+
 ### Core rules
 1. **One state store.** It holds flags, variables, inventory, per-room object state and the current room. Everything is JSON-serialisable, so save/load is a dump and restore.
 2. **Hotspots hide their technique.** Game code calls `hotspot.hit(x, y)`, never a provider directly. `colorMask`, `svg` and `polygon` are interchangeable providers.
@@ -62,7 +76,7 @@ Each phase ends with a working demo and passing tests.
 
 ### P0 · Setup
 - [x] Folder is `p5clickery` (no dot, so it is shell-safe). Package name and global namespace are `p5.clickery`.
-- [x] Add `package.json` (ES module, p5 pinned to 2.3.4), `.gitignore`, and a demo `index.html` that loads p5 2.x from `node_modules`.
+- [x] Add `package.json` (ES module, p5 pinned to 2.3.4), `.gitignore`, and a demo page that loads p5 2.x from `node_modules` (now `examples/core/`).
 - [x] Register the addon (`registerClickery`) and create a fixed-size canvas in instance mode (`createGameCanvas`).
 - [x] Tests run with `npm test` (Node's built-in runner, see Stack decisions).
 - [x] Check the demo in a browser.
@@ -130,7 +144,7 @@ Each phase ends with a working demo and passing tests.
 
 ### P10 · Docs and release
 - [x] README with a quick start, and a room and script format reference (`docs/reference.md`).
-- [x] A small example adventure (3 rooms, 1 puzzle, Ink dialogue) that doubles as an integration test (`examples/lighthouse`, `test/example.test.js`).
+- [x] A small example adventure (3 rooms, 1 puzzle, Ink dialogue) that doubles as an integration test (`examples/lighthouse`, `test/integration/lighthouse.test.js`).
 - [ ] Publish a 0.1 release. Prepared: version 0.1.0, MIT licence, changelog, package contents. The git tag and `npm publish` are left to the maintainer (see the release notes in the PR).
 
 ## Patterns worth borrowing

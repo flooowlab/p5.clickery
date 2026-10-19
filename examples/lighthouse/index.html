@@ -39,7 +39,7 @@
     let audio = null;
     try {
       audio = new AudioManager({ settings });
-      const sound = (name) => here(`../../demo/audio/${name}.wav`).href;
+      const sound = (name) => here(`../assets/audio/${name}.wav`).href;
       audio.register({
         'music-dock': sound('music-yard'), 'music-hall': sound('music-cellar'),
         pickup: sound('pickup'), bell: sound('alarm'), // stand-ins for real sounds

@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createCore, parseRoom, startPosition, Camera, Fade, SceneManager } from '../src/index.js';
+import { createCore, parseRoom, startPosition, Camera, Fade, SceneManager } from '../../src/index.js';
 
 const roomJson = (id, extra = {}) => ({
   id, width: 960, height: 360,

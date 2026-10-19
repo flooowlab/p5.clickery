@@ -2,7 +2,7 @@
 // Three rooms, one puzzle, an Ink conversation and a skippable ending.
 //
 // This file has no drawing code. It wires the game together from data, so the
-// same code runs in the browser (index.html) and in Node (test/example.test.js).
+// same code runs in the browser (index.html) and in Node (test/integration/lighthouse.test.js).
 import {
   createCore, SceneManager, HoverTracker, createHotspots, applyHotspotState, Navigator, Actor, Inventory, Interactor,
   Cutscenes, Scripts, SubtitleBar, ChoiceMenu, DialogueSession, createInkRunner, inkExternals, defaultStrings,

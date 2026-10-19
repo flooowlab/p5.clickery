@@ -1,12 +1,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  EventBus, Scheduler, GameLoop, StateStore, createCore,
+  EventBus, Scheduler, GameLoop, StateStore, createCore, I18n, Settings, bindTextSettings, SubtitleBar, Actor,
   serialize, deserialize, saveToSlot, loadFromSlot, deleteSlot, SAVE_VERSION,
-} from '../src/index.js';
+} from '../../src/index.js';
 
-const memoryStorage = () => {
-  const map = new Map();
+const memoryStorage = (initial = {}) => {
+  const map = new Map(Object.entries(initial));
   return {
     getItem: (k) => (map.has(k) ? map.get(k) : null),
     setItem: (k, v) => map.set(k, String(v)),
@@ -288,5 +288,86 @@ describe('save and load', () => {
     assert.throws(() => deserialize(s, '{"version":1}'), /no state/);
     assert.throws(() => deserialize(s, JSON.stringify({ version: 99, state: {} })), /newer/);
     assert.deepEqual(s.toJSON(), before);
+  });
+});
+
+describe('I18n', () => {
+  it('falls back to the default language, then to [key], and fills placeholders', () => {
+    const i = new I18n({ en: { hi: 'Hello {name}', bye: 'Bye' }, it: { hi: 'Ciao {name}' } }, 'it');
+    assert.equal(i.t('hi', { name: 'Ada' }), 'Ciao Ada');
+    assert.equal(i.t('bye'), 'Bye');
+    assert.equal(i.t('nope'), '[nope]');
+    assert.equal(i.t('hi'), 'Ciao {name}');
+    assert.ok(i.has('bye') && !i.has('nope'));
+    i.add('it', { nope: 'ora si' });
+    assert.equal(i.t('nope'), 'ora si');
+  });
+});
+
+describe('Settings', () => {
+  it('has defaults, clamps numbers and validates types', () => {
+    const s = new Settings({ storage: memoryStorage() });
+    assert.equal(s.get('subtitles'), true);
+    assert.equal(s.set('musicVolume', 5), 1);
+    assert.equal(s.set('musicVolume', -1), 0);
+    assert.equal(s.set('textSpeed', 100), 4);
+    assert.throws(() => s.set('subtitles', 'yes'), TypeError);
+    assert.throws(() => s.set('sfxVolume', NaN), TypeError);
+    assert.throws(() => s.get('nope'), /unknown setting/);
+    assert.throws(() => s.set('nope', 1), /unknown setting/);
+  });
+
+  it('tells listeners only about real changes, and they can unsubscribe', () => {
+    const s = new Settings({ storage: memoryStorage() });
+    const seen = [];
+    const off = s.onChange((name, value) => seen.push([name, value]));
+    s.set('textSpeed', 2);
+    s.set('textSpeed', 2);
+    off();
+    s.set('textSpeed', 3);
+    assert.deepEqual(seen, [['textSpeed', 2]]);
+  });
+
+  it('saves on change and loads in a new session, ignoring bad entries', () => {
+    const storage = memoryStorage();
+    const a = new Settings({ storage });
+    a.set('masterVolume', 0.25);
+    a.set('subtitles', false);
+    const b = new Settings({ storage });
+    assert.equal(b.load(), true);
+    assert.deepEqual([b.get('masterVolume'), b.get('subtitles')], [0.25, false]);
+
+    const messy = memoryStorage({ 'p5.clickery:settings': JSON.stringify({ musicVolume: 'loud', bogus: 1, sfxVolume: 0.1 }) });
+    const c = new Settings({ storage: messy });
+    assert.equal(c.load(), true);
+    assert.equal(c.get('sfxVolume'), 0.1);
+    assert.equal(c.get('musicVolume'), 0.7, 'the invalid value kept its default');
+    assert.equal(new Settings({ storage: memoryStorage() }).load(), false);
+    assert.equal(new Settings({ storage: memoryStorage({ 'p5.clickery:settings': '{oops' }) }).load(), false);
+  });
+
+  it('survives storage that throws, and reset restores defaults', () => {
+    const broken = { getItem() { throw new Error('no'); }, setItem() { throw new Error('no'); } };
+    const s = new Settings({ storage: broken });
+    s.set('textSpeed', 2);
+    assert.equal(s.get('textSpeed'), 2);
+    assert.equal(s.load(), false);
+    s.reset();
+    assert.equal(s.get('textSpeed'), 1);
+  });
+
+  it('bindTextSettings drives subtitles and actors now and later', () => {
+    const s = new Settings({ storage: memoryStorage() });
+    const bar = new SubtitleBar();
+    const hero = new Actor({ id: 'hero' });
+    s.set('textSpeed', 2);
+    const off = bindTextSettings(s, { subtitles: bar, actors: [hero] });
+    assert.deepEqual([bar.speed, bar.enabled, hero.textSpeed], [2, true, 2]);
+    s.set('subtitles', false);
+    s.set('textSpeed', 0.5);
+    assert.deepEqual([bar.speed, bar.enabled, hero.textSpeed], [0.5, false, 0.5]);
+    off();
+    s.set('textSpeed', 3);
+    assert.equal(bar.speed, 0.5);
   });
 });

@@ -12,14 +12,14 @@ First release. Everything below is new.
   (`goTo`, `restore`, enter/exit hooks, `room:enter`/`room:exit` events) and p5 draw helpers
   (`drawBackground`, `drawForeground`, `drawFade`).
 - P3 hotspots: `Hotspot`, `createHotspot`/`createHotspots`, providers (`polygon`, `colorMask`, `svg`), `HoverTracker`
-  (`hover` event), `clientToLogical` pointer mapping and `drawDebugOverlay`. `rooms.html` is the demo.
+  (`hover` event), `clientToLogical` pointer mapping and `drawDebugOverlay`. `examples/rooms` is the demo.
 - P4 navigation and actors: `Navigator` (walkable areas minus obstacles, A* over a visibility graph, depth scale),
   `scaleFromStops`, `sortByBaseline`, `Actor` (`walkTo`, `say`, `face`, `stop`), `AnimationState` (idle/walk/talk,
   4 or 8 directions, mirrored flips), `I18n`. Room JSON gains `obstacles` and per-area `scale` stops.
 - P5 interaction: `Inventory` (give/remove/combine recipes, saved in state), `Interactor` (per-object `onInteract`/`onLook`/`onUse`
   handlers, default responses, smart or verb mode, `setHotspotEnabled`), `applyHotspotState`, `PointerController`
   (mouse hover, tap-to-highlight on touch, long press and right-click to look), `InventoryBar`, `hoverLabel`,
-  `drawHoverLabel`, `defaultStrings`. `adventure.html` is the three-object puzzle demo.
+  `drawHoverLabel`, `defaultStrings`. `examples/adventure` is the three-object puzzle demo.
 - P6 scripting: `Scripts` registry (per-object `onInteract`/`onLook`/`onUse`/`onEnter`/`onEntered`/`onExit`, modules accepted),
   `Cutscenes` (input lock, `skip()`, `skip(label)` with `cs.label()`), `once`/`firstLook`/`firstInteract`/`firstUse`,
   skip button helpers. `Scheduler`, `Fade` and `Actor` gain `setSkipping(bool)` (fast-forward); `Actor.say` gains `literal`.
@@ -33,7 +33,7 @@ First release. Everything below is new.
   (text speed, subtitles, volumes; saved separately from save games) and `bindTextSettings`, `AudioManager`
   (music with crossfade, sfx, voice, volume buses, `attach` for room music, event sfx and dialogue `sfx` tags).
   Room JSON gains an optional `music` field. `Interactor` takes `audio` and passes it to handlers as `ctx.audio`.
-  `tools/make-demo-audio.mjs` generates the demo sounds.
+  `tools/make-example-audio.mjs` generates the example sounds.
 - P9 level editor (`tools/editor/`): a separate page that loads a room picture and exports the room JSON the runtime reads.
   Magic wand (flood select with tolerance, add/subtract), mask to marching squares to simplified polygon (holes in a floor
   become obstacles), polygon drawing, shape editing with undo/redo, hotspot ids and names, walk-to points, start positions,
@@ -41,7 +41,7 @@ First release. Everything below is new.
   Room JSON gains `obstacles` documentation only (the runtime already read it). `tools/make-sample-room.mjs` writes the sample picture.
 - P10 docs and release: MIT licence, [docs/reference.md](docs/reference.md) (room, hotspot, item, script, dialogue, state, event and
   save formats), and the complete example adventure `examples/lighthouse` (three rooms, a puzzle, an Ink conversation, a skippable
-  ending), which `test/example.test.js` plays through as an integration test.
+  ending), which `test/integration/lighthouse.test.js` plays through as an integration test.
 
 ### Fixed while building the example
 - `createInkRunner` can be called again for the same `Story`: it detaches the previous runner, binds external functions only once,
@@ -51,5 +51,8 @@ First release. Everything below is new.
   of throwing from inside an event and aborting the game flow.
 
 ### Changed
+- Repository layout: every runnable page is in `examples/` (`quickstart`, `core`, `rooms`, `adventure`, `lighthouse`, with an index page
+  and shared `assets/`); the old top-level pages and `demo/` folder are gone. Tests are grouped as `test/unit` (one file per `src/`
+  folder), `test/tools`, `test/integration`, `test/release` and `test/fixtures`.
 - `interactor.select(id)` throws `not carrying "<id>"` for an item the player does not have.
 - Package metadata: `p5` is a peer dependency (`>=2.0.0 <3`) and a dev dependency; `inkjs` is a dev dependency only.

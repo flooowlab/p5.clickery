@@ -44,28 +44,38 @@ It does **not** use p5.play and has no physics. You draw everything with normal 
 
 ## Running the examples
 
-The examples are `.html` files that load the library as ES modules, so a browser will not run them by double-clicking (`file://`). Serve the folder with any local web server, then open the page, for example:
+Everything you can open in a browser is in the [examples](examples) folder, one folder per example, in learning order. The examples load the library as ES modules, so a browser will not run them by double-clicking (`file://`). Serve the **repository folder** with any local web server, for example:
 
 ```
 python -m http.server 8000
 ```
 
-then visit `http://localhost:8000/quickstart.html`.
+then visit `http://localhost:8000/examples/` for the list.
 
-| File | What it shows |
+| Example | What it shows |
 | --- | --- |
-| `quickstart.html` | The smallest working game: one room, a hero, one sign. **Start here.** |
-| `index.html` | The game loop, timers and state with save/load |
-| `rooms.html` | Two rooms, scrolling, an obstacle to walk around, depth scaling, three kinds of hotspot, debug overlay (press `D`) |
-| `tools/editor/index.html` | The room editor: load a picture, draw hotspots and floors, export the room JSON, preview it |
-| `examples/lighthouse/index.html` | **A complete small game**: three rooms, a puzzle, an Ink conversation, a skippable ending, save and load. Read its source to see how the parts fit together (its logic is in `game.js`, with no drawing code) |
-| `adventure.html` | A complete little puzzle: items, combining, an opening cutscene, a guard to talk to, two rooms with music, sound effects, a settings panel, and scaling to any window or phone. Add `?adapter=ink` or `?adapter=twine` to change the dialogue format |
+| [examples/quickstart](examples/quickstart/index.html) | The smallest working game: one room, a hero, one sign. **Start here.** |
+| [examples/core](examples/core/index.html) | The game loop, timers and state with save/load |
+| [examples/rooms](examples/rooms/index.html) | Two rooms, scrolling, an obstacle to walk around, depth scaling, three kinds of hotspot, debug overlay (press `D`) |
+| [examples/adventure](examples/adventure/index.html) | A puzzle with items and combining, an opening cutscene, a guard to talk to, two rooms with music, sound effects, a settings panel, and scaling to any window or phone. Add `?adapter=ink` or `?adapter=twine` to change the dialogue format |
+| [examples/lighthouse](examples/lighthouse/index.html) | **A complete small game**: three rooms, a puzzle, an Ink conversation, a skippable ending, save and load. Read its source to see how a game is organised (its logic is in `game.js`, with no drawing code) |
+| [tools/editor](tools/editor/index.html) | The room editor: load a picture, draw hotspots and floors, export the room JSON, preview it |
+
+**How the repository is organised**
+
+| Folder | Contains |
+| --- | --- |
+| `src/` | The library. `src/index.js` exports everything. |
+| `examples/` | Runnable examples (each folder has an `index.html`), plus `assets/` shared by them (generated sounds). |
+| `tools/` | The room editor (`tools/editor/`) and small Node scripts: `compile-ink.mjs` (Ink to JSON), `make-example-audio.mjs` and `make-sample-room.mjs` (regenerate example assets). |
+| `docs/` | The [format reference](docs/reference.md). |
+| `test/` | Automated tests, run with `npm test`: `unit/` has one file per `src/` folder, `tools/` tests the editor, `integration/` plays the Lighthouse from start to finish, `release/` checks the package and the documentation links, `fixtures/` holds test data. |
 
 ---
 
 ## Your first game in 10 steps
 
-This is [quickstart.html](quickstart.html), explained. The whole file is about 100 lines.
+This is [examples/quickstart](examples/quickstart/index.html), explained. The whole file is about 100 lines. The paths below (`node_modules/...`, `./src/index.js`) are written for a page in your own project's top folder; the example itself sits two folders down, so it uses `../../`.
 
 ### 1. Load p5 and the library
 
@@ -459,7 +469,7 @@ createHotspots(room, {
 });
 ```
 
-Read mask pixels **once**, when loading, and keep them (reading pixels every frame is slow). Draw the mask with no antialiasing, e.g. with `fillRect` in a canvas, then `getImageData`; `rooms.html` shows this. The mask may have a different size from the room; positions are scaled automatically.
+Read mask pixels **once**, when loading, and keep them (reading pixels every frame is slow). Draw the mask with no antialiasing, e.g. with `fillRect` in a canvas, then `getImageData`; `examples/rooms` shows this. The mask may have a different size from the room; positions are scaled automatically.
 
 **`walkTo`: where the hero stands**
 
@@ -982,7 +992,7 @@ bindTextSettings(settings, { subtitles, actors: [hero] });   // text speed and s
 | `sfxVolume` | 0 to 1 | 1 | Sound effects |
 | `voiceVolume` | 0 to 1 | 1 | Voice |
 
-The audio volumes follow the settings by themselves when you give the `AudioManager` your `Settings`. Hook sliders to them with `settings.set(...)`; `adventure.html` has a working panel.
+The audio volumes follow the settings by themselves when you give the `AudioManager` your `Settings`. Hook sliders to them with `settings.set(...)`; `examples/adventure` has a working panel.
 
 ### 14. Debugging
 
