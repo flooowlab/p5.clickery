@@ -14,10 +14,11 @@ This guide is for people who already know a little p5.js (`setup`, `draw`, drawi
 4. [Words you will see](#words-you-will-see)
 5. [Guide](#guide)
    [Setup](#1-setup) · [Events, timers and state](#2-events-timers-and-state) · [Text](#3-text-everything-is-a-key) · [Rooms](#4-rooms) · [Hotspots](#5-hotspots-clickable-areas) · [Walking and actors](#6-walking-and-actors) · [Items and actions](#7-items-and-actions) · [Scripts and cutscenes](#8-scripts-and-cutscenes) · [Dialogue](#9-dialogue) · [Saving](#10-saving-and-loading) · [Fitting the window](#11-fitting-the-window) · [Sound](#12-sound-and-music) · [Settings](#13-player-settings) · [Debugging](#14-debugging)
-6. [Recipes](#recipes)
-7. [Troubleshooting](#troubleshooting)
-8. [Cheat sheet](#cheat-sheet)
-9. [Not in the library yet](#not-in-the-library-yet)
+6. [Making rooms with the editor](#making-rooms-with-the-editor)
+7. [Recipes](#recipes)
+8. [Troubleshooting](#troubleshooting)
+9. [Cheat sheet](#cheat-sheet)
+10. [Good to know](#good-to-know)
 
 ---
 
@@ -35,6 +36,7 @@ This guide is for people who already know a little p5.js (`setup`, `draw`, drawi
 | Run conversations | Markdown, Twine or Ink dialogue |
 | Save and load | `saveToSlot`, `loadFromSlot` |
 | Fit any window or phone, play music and sound, let players change settings | `LetterboxScaler`, `AudioManager`, `Settings` |
+| Draw rooms with the mouse instead of typing coordinates | the room editor in `tools/editor/` |
 
 It does **not** use p5.play and has no physics. You draw everything with normal p5.js calls; the library tells you *where* things are and *what happened*.
 
@@ -55,6 +57,7 @@ then visit `http://localhost:8000/quickstart.html`.
 | `quickstart.html` | The smallest working game: one room, a hero, one sign. **Start here.** |
 | `index.html` | The game loop, timers and state with save/load |
 | `rooms.html` | Two rooms, scrolling, an obstacle to walk around, depth scaling, three kinds of hotspot, debug overlay (press `D`) |
+| `tools/editor/index.html` | The room editor: load a picture, draw hotspots and floors, export the room JSON, preview it |
 | `adventure.html` | A complete little puzzle: items, combining, an opening cutscene, a guard to talk to, two rooms with music, sound effects, a settings panel, and scaling to any window or phone. Add `?adapter=ink` or `?adapter=twine` to change the dialogue format |
 
 ---
@@ -990,6 +993,43 @@ Draw it last in `p.draw`, perhaps toggled with a key (the demos use `D`). It out
 
 ---
 
+## Making rooms with the editor
+
+Writing coordinates by hand gets old quickly. The room editor is a separate page (`tools/editor/index.html`, served like the other examples) where you load your room picture, mark out the clickable areas and the floor with the mouse, and export the room JSON that your game loads.
+
+**A first room, in about a minute**
+
+1. Open `tools/editor/index.html` and press **Open image…** (or **Sample room** to try it out).
+2. Choose the shape type in **New shape**: *walkable* for the floor, *hotspot* for things to click, *obstacle* for holes in the floor.
+3. Pick the **Wand** and click a coloured area of the picture. The selected pixels turn pink. **Shift**-click adds more, **Alt**-click takes some away, **Ctrl**-click selects that colour everywhere instead of only the connected area. The **Tolerance** slider decides how different a colour may be and still count.
+4. Press **Enter** (or **Create from selection**). The selection becomes a polygon. **Detail** controls how many corners it gets: lower is more exact, higher is simpler.
+   * For a *walkable* area, anything inside it that is not floor (a table, a pillar) becomes an *obstacle* automatically.
+5. For shapes the wand cannot find, use the **Polygon** tool: click the corners, then click the first corner again (or double-click, or press Enter) to finish.
+6. Name your shapes in the right-hand panel. A hotspot's id is what you use in `interactor.register('door', ...)`; its *name key* is the text shown on hover (it defaults to `obj.<id>`).
+7. Use the **Walk-to** tool: select a hotspot, then click where the hero should stand to use it. Use the **Start** tool to place where the hero appears (you can have several, named, for different entrances).
+8. Press **Preview** to try the room in the real engine: click to walk, hover and click the hotspots. Fix anything the **Check** list in the panel warns about.
+9. Press **Export…** and save the JSON as, for example, `rooms/hall.json`.
+
+**Using the exported room**
+
+```js
+const scene = new SceneManager({
+  ...core, viewWidth: 640, viewHeight: 360,
+  loadRoom: async (id) => (await fetch(`rooms/${id}.json`)).json(),   // the editor's file, unchanged
+});
+await scene.goTo('hall');
+```
+
+The picture is named in the JSON (`"background": "hall.png"`); give `drawBackground` the loaded image under that name (see [Drawing a room](#4-rooms)). **Download text keys** gives you a starter list of the hotspot names to put into `core.i18n`.
+
+**Editing afterwards**
+
+* **Select** tool: click a shape; drag a corner to move it, drag the inside to move the whole shape, **Alt**-click a corner to delete it, double-click an edge to add a corner, **Delete** removes the shape.
+* Scroll to zoom; drag with the middle or right mouse button (or hold Space) to pan; **F** fits the picture to the window.
+* **Ctrl+Z** / **Ctrl+Y** undo and redo. Your work is kept in the browser automatically, so closing the tab does not lose it.
+* **Import…** opens a room JSON again (also one written by hand). Hotspots that use the `svg` or `colorMask` providers are kept exactly as they are; the editor only edits polygon hotspots.
+* The editor needs a picture with fairly flat colours for the wand to work well: paint or export the floor, door and so on in distinct colours, or just use the Polygon tool.
+
 ## Recipes
 
 **A door to another room**
@@ -1103,10 +1143,10 @@ All of these are exported from `src/index.js`.
 
 ---
 
-## Not in the library yet
+## Good to know
 
-Planned but not available yet, so you will need your own code for now:
-
-* A level editor to draw rooms instead of writing coordinates by hand.
+* The editor exports polygon hotspots. Hotspots built from an SVG file or a colour-mask picture are written by hand in the room JSON (the editor keeps them when you import such a file).
+* Dialogue text lives in the dialogue files (Markdown, Twine, Ink); everything else the player reads is a text key in `core.i18n`.
+* TypeScript type definitions are not included yet.
 
 See [CHANGELOG.md](CHANGELOG.md) for what each version adds.

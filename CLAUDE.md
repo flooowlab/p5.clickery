@@ -122,10 +122,10 @@ Each phase ends with a working demo and passing tests.
 - **Done when:** the demo plays correctly at phone width and desktop width.
 
 ### P9 · Level editor (`tools/`)
-- [ ] Separate page. Load a room image.
-- [ ] Manual polygon drawing and a magic wand that builds a mask.
-- [ ] Mask to marching squares to simplified polygon.
-- [ ] Assign hotspot ids and walkable areas. Export JSON that the runtime loads.
+- [x] Separate page. Load a room image.
+- [x] Manual polygon drawing and a magic wand that builds a mask.
+- [x] Mask to marching squares to simplified polygon.
+- [x] Assign hotspot ids and walkable areas. Export JSON that the runtime loads.
 - **Done when:** a room drawn in the editor loads in the runtime with no hand edits.
 
 ### P10 · Docs and release

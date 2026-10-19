@@ -32,3 +32,8 @@
   (music with crossfade, sfx, voice, volume buses, `attach` for room music, event sfx and dialogue `sfx` tags).
   Room JSON gains an optional `music` field. `Interactor` takes `audio` and passes it to handlers as `ctx.audio`.
   `tools/make-demo-audio.mjs` generates the demo sounds.
+- P9 level editor (`tools/editor/`): a separate page that loads a room picture and exports the room JSON the runtime reads.
+  Magic wand (flood select with tolerance, add/subtract), mask to marching squares to simplified polygon (holes in a floor
+  become obstacles), polygon drawing, shape editing with undo/redo, hotspot ids and names, walk-to points, start positions,
+  depth scale, problem checks, import/export, autosave and a Preview page that runs the room in the real engine.
+  Room JSON gains `obstacles` documentation only (the runtime already read it). `tools/make-sample-room.mjs` writes the sample picture.
