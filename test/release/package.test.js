@@ -24,7 +24,10 @@ describe('release', () => {
   it('the entry points and every published file or folder exist', () => {
     assert.ok(fs.existsSync(path.join(root, pkg.main)));
     assert.equal(pkg.exports['.'], `./${pkg.main}`);
-    for (const entry of pkg.files) assert.ok(fs.existsSync(path.join(root, entry)), `files entry "${entry}" is missing`);
+    for (const entry of pkg.files) {
+      const file = entry.replace(/^!/, ''); // "!x" excludes x from the package; it should still exist
+      assert.ok(fs.existsSync(path.join(root, file)), `files entry "${entry}" is missing`);
+    }
   });
 
   it('p5 is a peer dependency that the dev copy satisfies; the library itself needs no runtime dependencies', () => {

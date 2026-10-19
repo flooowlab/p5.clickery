@@ -30,6 +30,7 @@
     "src",
     "docs",
     "examples",
+    "!examples/assets",
     "tools/editor",
     "tools/compile-ink.mjs",
     "README.md",
