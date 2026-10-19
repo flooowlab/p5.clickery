@@ -129,9 +129,9 @@ Each phase ends with a working demo and passing tests.
 - **Done when:** a room drawn in the editor loads in the runtime with no hand edits.
 
 ### P10 · Docs and release
-- [ ] README with a quick start, and a room and script format reference.
-- [ ] A small example adventure (3 rooms, 1 puzzle, Ink dialogue) that doubles as an integration test.
-- [ ] Publish a 0.1 release.
+- [x] README with a quick start, and a room and script format reference (`docs/reference.md`).
+- [x] A small example adventure (3 rooms, 1 puzzle, Ink dialogue) that doubles as an integration test (`examples/lighthouse`, `test/example.test.js`).
+- [ ] Publish a 0.1 release. Prepared: version 0.1.0, MIT licence, changelog, package contents. The git tag and `npm publish` are left to the maintainer (see the release notes in the PR).
 
 ## Patterns worth borrowing
 
@@ -155,4 +155,4 @@ Each phase ends with a working demo and passing tests.
 
 - Verb list or single smart action as the default? (Default: single smart action.)
 - Target browsers and minimum mobile version?
-- Licence for the library? (Pick before P10.)
+- ~~Licence for the library?~~ Decided: MIT.

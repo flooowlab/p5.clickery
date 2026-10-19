@@ -1,18 +1,49 @@
 {
   "name": "p5.clickery",
-  "version": "0.0.1",
-  "description": "Point-and-click adventure library built on p5.js 2.x",
+  "version": "0.1.0",
+  "description": "Point-and-click adventure library built on p5.js 2.x: rooms, hotspots, walking, inventory, cutscenes, dialogue (Markdown, Twine, Ink), save/load and a level editor",
+  "keywords": [
+    "p5js",
+    "p5.js",
+    "adventure",
+    "point-and-click",
+    "game",
+    "ink",
+    "twine"
+  ],
+  "license": "MIT",
+  "author": "Daniele Savasta",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/flooowlab/p5.clickery.git"
+  },
+  "bugs": "https://github.com/flooowlab/p5.clickery/issues",
+  "homepage": "https://github.com/flooowlab/p5.clickery#readme",
   "type": "module",
   "main": "src/index.js",
-  "license": "UNLICENSED",
-  "private": true,
+  "exports": {
+    ".": "./src/index.js",
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": [
+    "src",
+    "docs",
+    "examples",
+    "tools/editor",
+    "tools/compile-ink.mjs",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "node --test test/*.test.js"
   },
-  "dependencies": {
-    "p5": "2.3.4"
+  "peerDependencies": {
+    "p5": ">=2.0.0 <3"
   },
   "devDependencies": {
-    "inkjs": "^2.4.0"
+    "inkjs": "^2.4.0",
+    "p5": "2.3.4"
   }
 }

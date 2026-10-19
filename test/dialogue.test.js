@@ -289,6 +289,33 @@ describe('ink adapter', () => {
     assert.equal(r2.vars.passed, false, 'state -> ink while running');
   });
 
+  it('one story can run many conversations: externals rebind, old links detach, saved variables survive the reset', () => {
+    const state = new StateStore();
+    const story = inkStory();
+    const given = [];
+    const make = () => createInkRunner(story, { state, sync: ['passed'], externals: { giveItem: (id) => given.push(id) } });
+    transcript(make(), 0);
+    assert.deepEqual(given, ['badge']);
+    assert.equal(state.get('vars.passed'), true);
+    const again = make();
+    assert.equal(again.vars.passed, true, 'the reset did not wipe the saved variable');
+    assert.equal(state.get('vars.passed'), true);
+    transcript(again, 1);
+    assert.deepEqual(given, ['badge'], 'the "nobody" branch gives nothing, and no handler ran twice');
+    again.dispose();
+    state.set('vars.passed', false);
+    assert.equal(story.variablesState.passed, true, 'a disposed runner no longer follows the store');
+  });
+
+  it('reset: false carries on a story that is part-way through', () => {
+    const story = inkStory();
+    const first = createInkRunner(story, { externals: { giveItem() {} } });
+    first.next();
+    const carried = createInkRunner(story, { externals: { giveItem() {} }, reset: false });
+    assert.equal(carried.next(), null, 'still waiting at the choice from before');
+    assert.equal(carried.choices().length, 2);
+  });
+
   it('vars can be read and written directly', () => {
     const r = inkRunner();
     r.vars.passed = true;

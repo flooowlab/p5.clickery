@@ -151,7 +151,7 @@
     const newConversation = () => {
       const options = { state: core.state };
       if (adapter === 'twine') return createTwineRunner(source, options);
-      if (adapter === 'ink') { inkStory.ResetState(); return createInkRunner(inkStory, { state: core.state, sync: ['metGuard'] }); }
+      if (adapter === 'ink') return createInkRunner(inkStory, { state: core.state, sync: ['metGuard'] });
       return createMarkdownRunner(source, options);
     };
     let toast = null;

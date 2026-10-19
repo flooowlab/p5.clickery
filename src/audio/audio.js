@@ -147,14 +147,18 @@ export class AudioManager {
     return sound;
   }
 
-  // The decoded buffer, or null (with one console warning) when not loaded yet.
+  // The decoded buffer, or null (with one console warning) when the sound is unknown or not
+  // loaded yet. A missing sound must never break the game, so playing it is just silent.
   #loaded(id) {
-    const sound = this.#sound(id);
-    if (!sound.buffer && !this.#warned.has(id)) {
+    const sound = this.sounds.get(id);
+    if (sound?.buffer) return sound.buffer;
+    if (!this.#warned.has(id)) {
       this.#warned.add(id);
-      console.warn(`sound "${id}" is not loaded yet: await audio.load("${id}") or audio.loadAll() first`);
+      console.warn(sound
+        ? `sound "${id}" is not loaded yet: await audio.load("${id}") or audio.loadAll() first`
+        : `unknown sound "${id}": register it with audio.register({ ${id}: 'file' }); playing nothing`);
     }
-    return sound.buffer;
+    return null;
   }
 
   #play(id, bus, { volume = 1, loop = false } = {}) {

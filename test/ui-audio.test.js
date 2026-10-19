@@ -259,6 +259,25 @@ describe('AudioManager', () => {
     assert.equal(warnings.length, 2, 'once per sound id');
   });
 
+  it('an unknown sound id is silent with one warning, so a missing effect never breaks the game', async () => {
+    const { audio } = makeAudio();
+    await audio.loadAll();
+    const warn = console.warn;
+    const warnings = [];
+    console.warn = (m) => warnings.push(m);
+    try {
+      assert.equal(audio.playSfx('typo'), null);
+      assert.equal(audio.playSfx('typo'), null);
+      assert.equal(audio.playMusic('typo'), null);
+      const events = new EventBus();
+      audio.attach(events, { sfx: { 'inventory:add': 'also-missing' } });
+      events.emit('inventory:add', {});
+      events.emit('dialogue:tag', { key: 'sfx', value: 'bell' });
+    } finally { console.warn = warn; }
+    assert.equal(warnings.length, 3, 'one warning per unknown id: typo, also-missing, bell');
+    assert.match(warnings[0], /unknown sound "typo"/);
+  });
+
   it('crossfades music: the old track ramps down and stops, the new one ramps up', async () => {
     const { audio, context } = makeAudio();
     await audio.loadAll();

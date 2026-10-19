@@ -1,0 +1,22 @@
+{
+  "id": "hall",
+  "width": 640,
+  "height": 360,
+  "color": "#3a2f2a",
+  "music": "music-hall",
+  "starts": {
+    "default": { "x": 80, "y": 300, "dir": "right" },
+    "fromLamp": { "x": 520, "y": 300, "dir": "down" }
+  },
+  "walkable": [
+    { "id": "floor", "points": [[0, 250], [640, 250], [640, 330], [0, 330]], "scale": [[250, 0.7], [330, 1]] }
+  ],
+  "hotspots": [
+    { "id": "door-out", "name": "obj.door-out", "provider": "polygon", "color": "#6b4a2e",
+      "points": [[30, 120], [100, 120], [100, 250], [30, 250]], "walkTo": { "x": 120, "y": 290, "dir": "left" } },
+    { "id": "keeper", "name": "obj.keeper", "provider": "polygon", "color": "#4a6fa5",
+      "points": [[300, 150], [350, 150], [350, 262], [300, 262]], "walkTo": { "x": 322, "y": 304, "dir": "up" } },
+    { "id": "stairs", "name": "obj.stairs", "provider": "polygon", "color": "#8d8d8d",
+      "points": [[540, 110], [620, 110], [620, 250], [540, 250]], "walkTo": { "x": 540, "y": 290, "dir": "up" } }
+  ]
+}

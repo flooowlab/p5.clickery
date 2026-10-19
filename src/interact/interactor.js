@@ -49,8 +49,12 @@ export class Interactor {
     return Boolean(this.cutscenes?.active || this.dialogue?.active);
   }
 
+  // Holds an item (or null to put it away). Only carried items can be held.
   select(item) {
-    if (item !== null) this.inventory.define(item);
+    if (item !== null) {
+      this.inventory.define(item);
+      if (!this.inventory.has(item)) throw new Error(`not carrying "${item}"`);
+    }
     this.held = item;
     this.events?.emit('inventory:select', { id: item });
   }

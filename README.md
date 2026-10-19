@@ -10,7 +10,7 @@ This guide is for people who already know a little p5.js (`setup`, `draw`, drawi
 
 1. [What you get](#what-you-get)
 2. [Running the examples](#running-the-examples)
-3. [Your first game in 10 steps](#your-first-game-in-10-steps)
+3. [Your first game in 10 steps](#your-first-game-in-10-steps) (and the [format reference](docs/reference.md))
 4. [Words you will see](#words-you-will-see)
 5. [Guide](#guide)
    [Setup](#1-setup) · [Events, timers and state](#2-events-timers-and-state) · [Text](#3-text-everything-is-a-key) · [Rooms](#4-rooms) · [Hotspots](#5-hotspots-clickable-areas) · [Walking and actors](#6-walking-and-actors) · [Items and actions](#7-items-and-actions) · [Scripts and cutscenes](#8-scripts-and-cutscenes) · [Dialogue](#9-dialogue) · [Saving](#10-saving-and-loading) · [Fitting the window](#11-fitting-the-window) · [Sound](#12-sound-and-music) · [Settings](#13-player-settings) · [Debugging](#14-debugging)
@@ -58,6 +58,7 @@ then visit `http://localhost:8000/quickstart.html`.
 | `index.html` | The game loop, timers and state with save/load |
 | `rooms.html` | Two rooms, scrolling, an obstacle to walk around, depth scaling, three kinds of hotspot, debug overlay (press `D`) |
 | `tools/editor/index.html` | The room editor: load a picture, draw hotspots and floors, export the room JSON, preview it |
+| `examples/lighthouse/index.html` | **A complete small game**: three rooms, a puzzle, an Ink conversation, a skippable ending, save and load. Read its source to see how the parts fit together (its logic is in `game.js`, with no drawing code) |
 | `adventure.html` | A complete little puzzle: items, combining, an opening cutscene, a guard to talk to, two rooms with music, sound effects, a settings panel, and scaling to any window or phone. Add `?adapter=ink` or `?adapter=twine` to change the dialogue format |
 
 ---
@@ -1148,5 +1149,8 @@ All of these are exported from `src/index.js`.
 * The editor exports polygon hotspots. Hotspots built from an SVG file or a colour-mask picture are written by hand in the room JSON (the editor keeps them when you import such a file).
 * Dialogue text lives in the dialogue files (Markdown, Twine, Ink); everything else the player reads is a text key in `core.i18n`.
 * TypeScript type definitions are not included yet.
+
+* The exact format of rooms, hotspots, scripts, dialogue files, state and saves is in [docs/reference.md](docs/reference.md).
+* Licence: [MIT](LICENSE).
 
 See [CHANGELOG.md](CHANGELOG.md) for what each version adds.
