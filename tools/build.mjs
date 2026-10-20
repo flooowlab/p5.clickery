@@ -30,7 +30,8 @@ if (mode === '--check') {
     const result = await esbuild.build({ ...options, write: false });
     const fresh = result.outputFiles[0].text;
     const file = path.join(root, options.outfile);
-    if (!fs.existsSync(file) || fs.readFileSync(file, 'utf8') !== fresh) stale.push(options.outfile);
+    const lf = (text) => text.replaceAll('\r\n', '\n'); // a checkout may have turned LF into CRLF
+    if (!fs.existsSync(file) || lf(fs.readFileSync(file, 'utf8')) !== lf(fresh)) stale.push(options.outfile);
   }
   if (stale.length) {
     console.error(`out of date: ${stale.join(', ')}. Run: npm run build`);
