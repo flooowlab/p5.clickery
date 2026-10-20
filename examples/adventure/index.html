@@ -7,9 +7,7 @@
   <style>
     html, body { height: 100%; margin: 0; }
     body { display: flex; flex-direction: column; background: #111; color: #ddd; font-family: sans-serif; overflow: hidden; }
-    /* The stage fills the space; the library letterboxes the canvas inside it. */
-    #stage { flex: 1; min-height: 0; background: #000; touch-action: none; }
-    #stage canvas { touch-action: none; }
+    #stage { flex: 1; min-height: 0; background: #000; }
     #panel { padding: 4px 12px; font-size: 14px; max-height: 45vh; overflow: auto; }
     #panel summary { cursor: pointer; padding: 4px 0; }
     .row { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 6px 0; }
@@ -18,6 +16,8 @@
     #panel p { margin: 6px 0; }
   </style>
   <script src="../../node_modules/p5/lib/p5.min.js"></script>
+  <script src="../../node_modules/inkjs/dist/ink.js"></script> <!-- only needed for ?adapter=ink -->
+  <script src="../../dist/p5.clickery.min.js"></script>
 </head>
 <body>
   <div id="stage"></div>
@@ -35,275 +35,153 @@
        Talk to the guard (<code>?adapter=markdown</code>, <code>twine</code> or <code>ink</code> picks the dialogue format). The trapdoor on the left leads to a cellar with its own music.
        The game opens with a short cutscene (Skip button or Esc). Mouse: click to act, right-click or hold to look. Touch: tap once to highlight, again to act, hold to look. D toggles debug.</p>
   </details>
-  <script type="module">
-    import {
-      registerClickery, createCore, SceneManager, HoverTracker, createHotspots, Navigator, Actor,
-      Inventory, Interactor, PointerController, InventoryBar, hoverLabel, defaultStrings, applyHotspotState,
-      Cutscenes, Scripts, hitSkipButton, drawSkipButton,
-      SubtitleBar, ChoiceMenu, DialogueSession, createMarkdownRunner, createTwineRunner, createInkRunner,
-      LetterboxScaler, Settings, bindTextSettings, AudioManager,
-      drawBackground, drawFade, drawDebugOverlay, drawHoverLabel,
-    } from '../../src/index.js';
+  <script>
+    const { drawRoomShapes } = p5.clickery;
+    let game;
 
-    registerClickery(p5);
-    const VIEW_W = 640, VIEW_H = 360;
-
-    const core = createCore();
-    core.i18n.add('en', {
-      ...defaultStrings,
-      'item.stick': 'stick', 'item.string': 'string', 'item.pole': 'fishing pole', 'item.key': 'brass key',
-      'obj.stick': 'Stick', 'obj.string': 'Ball of string', 'obj.grate': 'Drain grate', 'obj.door': 'Door', 'obj.guard': 'Guard',
-      'obj.hatch': 'Trapdoor', 'obj.ladder': 'Ladder',
-      'stick.get': 'A sturdy stick.', 'stick.look': 'It is a stick.',
-      'string.get': 'Some string. Handy.', 'string.look': 'A ball of string.',
-      'grate.look': 'Something shiny is down there, out of reach.',
-      'grate.fish': 'Got it! A brass key.',
-      'grate.reach': "I can't reach it with my hands.",
-      'pole.made': 'A fishing pole. Not bad.',
-      'intro.wake': 'Ugh... where am I?', 'intro.look': 'It is far too dark to see anything.', 'intro.light': 'There. That is better. Let me look around.',
-      'guard.look': 'A guard, leaning on his spear.',
-      'hatch.look': 'A trapdoor. It leads down.', 'ladder.look': 'A ladder back up.',
-      'door.look': 'A heavy door.', 'door.locked': "It's locked.", 'door.open': 'The key fits. Well done!',
-    });
-    core.state.set('currentRoom', 'yard');
-
-    // ---- settings and sound ----
-    const settings = new Settings();
-    settings.load();
-    const audio = new AudioManager({ settings });
-    audio.register({
-      'music-yard': '../assets/audio/music-yard.wav', 'music-cellar': '../assets/audio/music-cellar.wav',
-      pickup: '../assets/audio/pickup.wav', click: '../assets/audio/click.wav', alarm: '../assets/audio/alarm.wav', door: '../assets/audio/door.wav',
-    });
-    try { await audio.loadAll(); } catch (err) { console.warn('audio failed to load, continuing without it', err); }
-    audio.unlockOnGesture(window);
-    audio.attach(core.events, {
-      sfx: {
-        'inventory:add': 'pickup',
-        'room:exit': 'door',
-        action: (e) => (e.verb === 'interact' && e.handled ? 'click' : null),
-      },
-    });
-
-    // ---- rooms ----
-    const floor = { id: 'floor', points: [[0, 240], [640, 240], [640, 300], [0, 300]], scale: [[240, 0.6], [300, 1]] };
-    const rooms = {
-      yard: {
-        id: 'yard', width: VIEW_W, height: VIEW_H, color: '#2d3a55', music: 'music-yard',
-        starts: { default: { x: 60, y: 300 }, hatch: { x: 100, y: 296 } },
-        walkable: [floor], obstacles: [],
-        hotspots: [
-          { id: 'hatch', name: 'obj.hatch', provider: 'polygon', points: [[20, 255], [85, 255], [85, 285], [20, 285]], walkTo: { x: 100, y: 296, dir: 'left' } },
-          { id: 'stick', name: 'obj.stick', provider: 'polygon', points: [[110, 255], [160, 255], [160, 270], [110, 270]], walkTo: { x: 135, y: 285, dir: 'up' } },
-          { id: 'string', name: 'obj.string', provider: 'polygon', points: [[260, 255], [290, 255], [290, 280], [260, 280]], walkTo: { x: 275, y: 295, dir: 'up' } },
-          { id: 'grate', name: 'obj.grate', provider: 'polygon', points: [[400, 250], [470, 250], [470, 280], [400, 280]], walkTo: { x: 435, y: 295, dir: 'up' } },
-          { id: 'guard', name: 'obj.guard', provider: 'polygon', points: [[335, 205], [375, 205], [375, 285], [335, 285]], walkTo: { x: 345, y: 296, dir: 'right' } },
-          { id: 'door', name: 'obj.door', provider: 'polygon', points: [[560, 110], [620, 110], [620, 240], [560, 240]], walkTo: { x: 590, y: 270, dir: 'up' } },
-        ],
-      },
-      cellar: {
-        id: 'cellar', width: VIEW_W, height: VIEW_H, color: '#2b2026', music: 'music-cellar',
-        starts: { default: { x: 540, y: 296 } },
-        walkable: [floor], obstacles: [],
-        hotspots: [
-          { id: 'ladder', name: 'obj.ladder', provider: 'polygon', points: [[580, 120], [620, 120], [620, 290], [580, 290]], walkTo: { x: 565, y: 296, dir: 'right' } },
-        ],
-      },
+    // ---- the rooms: plain data; "color" fills a shape until there is real art ----
+    const floor = { id: 'floor', points: [[0, 240], [640, 240], [640, 300], [0, 300]], scale: [[240, 0.6], [300, 1]], color: '#3c465a' };
+    const yard = {
+      id: 'yard', width: 640, height: 360, color: '#2d3a55', music: 'music-yard',
+      starts: { default: { x: 60, y: 300 }, hatch: { x: 100, y: 296 } },
+      walkable: [floor],
+      hotspots: [
+        { id: 'hatch', name: 'obj.hatch', provider: 'polygon', color: '#46322a', points: [[20, 255], [85, 255], [85, 285], [20, 285]], walkTo: { x: 100, y: 296, dir: 'left' } },
+        { id: 'stick', name: 'obj.stick', provider: 'polygon', color: '#8c6432', points: [[110, 255], [160, 255], [160, 270], [110, 270]], walkTo: { x: 135, y: 285, dir: 'up' } },
+        { id: 'string', name: 'obj.string', provider: 'polygon', color: '#dcdcc8', points: [[260, 255], [290, 255], [290, 280], [260, 280]], walkTo: { x: 275, y: 295, dir: 'up' } },
+        { id: 'grate', name: 'obj.grate', provider: 'polygon', color: '#282828', points: [[400, 250], [470, 250], [470, 280], [400, 280]], walkTo: { x: 435, y: 295, dir: 'up' } },
+        { id: 'guard', name: 'obj.guard', provider: 'polygon', color: '#5a78c8', points: [[340, 215], [370, 215], [370, 285], [340, 285]], walkTo: { x: 345, y: 296, dir: 'right' } },
+        { id: 'door', name: 'obj.door', provider: 'polygon', color: '#966438', points: [[560, 110], [620, 110], [620, 240], [560, 240]], walkTo: { x: 590, y: 270, dir: 'up' } },
+      ],
     };
-    const scene = new SceneManager({ ...core, viewWidth: VIEW_W, viewHeight: VIEW_H, loadRoom: async (id) => rooms[id], fadeMs: 300 });
-
-    const hero = new Actor({ id: 'hero', speed: 150, directions: 4, translate: (k, v) => core.i18n.t(k, v) });
-    const hover = new HoverTracker(core.events);
-    const inventory = new Inventory({
-      state: core.state, events: core.events,
-      items: { stick: { name: 'item.stick' }, string: { name: 'item.string' }, pole: { name: 'item.pole' }, key: { name: 'item.key' } },
-      recipes: [{ a: 'stick', b: 'string', result: 'pole', say: 'pole.made' }],
-    });
-    const subtitles = new SubtitleBar();
-    bindTextSettings(settings, { subtitles, actors: [hero] });
-    const menu = new ChoiceMenu({ viewWidth: VIEW_W, viewHeight: VIEW_H });
-    const dialogue = new DialogueSession({ events: core.events, subtitles, menu });
-    const cutscenes = new Cutscenes({ events: core.events, scheduler: core.scheduler, targets: [hero, scene.fade] });
-    const interactor = new Interactor({ hero, state: core.state, events: core.events, inventory, hover, cutscenes, dialogue, audio });
-    const scripts = new Scripts({ interactor });
-    scene.scripts = scripts;
-    const bar = new InventoryBar({ viewWidth: VIEW_W, viewHeight: VIEW_H });
-    const pointer = new PointerController({ interactor, hover, camera: scene.camera, bar, scheduler: core.scheduler });
-
-    // The opening, once the room has faded in: walk, speak, switch the light on.
-    scripts.add('yard', {
-      onEntered: (c) => c.firstVisit && cutscenes.run(async (cs) => {
-        await hero.say('intro.wake');
-        await hero.walkTo({ x: 200, y: 285, dir: 'right' });
-        await hero.say('intro.look');
-        cs.label('light');
-        core.state.set('flags.lightOn', true);
-        await cs.wait(600);
-        await hero.say('intro.light');
-      }),
-    });
-
-    // The same conversation in three formats; pick one with ?adapter=markdown|twine|ink.
-    const adapter = new URLSearchParams(location.search).get('adapter') ?? 'markdown';
-    const text = (f) => fetch(f).then((r) => r.text());
-    const source = adapter === 'ink' ? await fetch('dialogue/guard.ink.json').then((r) => r.text()) : await text(adapter === 'twine' ? 'dialogue/guard.twee' : 'dialogue/guard.md');
-    const inkStory = adapter === 'ink' ? new (await import('../../node_modules/inkjs/dist/ink.mjs')).Story(source) : null;
-    const newConversation = () => {
-      const options = { state: core.state };
-      if (adapter === 'twine') return createTwineRunner(source, options);
-      if (adapter === 'ink') return createInkRunner(inkStory, { state: core.state, sync: ['metGuard'] });
-      return createMarkdownRunner(source, options);
+    const cellar = {
+      id: 'cellar', width: 640, height: 360, color: '#2b2026', music: 'music-cellar',
+      starts: { default: { x: 540, y: 296 } },
+      walkable: [floor],
+      hotspots: [
+        { id: 'ladder', name: 'obj.ladder', provider: 'polygon', color: '#6e5a3c', points: [[580, 120], [620, 120], [620, 290], [580, 290]], walkTo: { x: 565, y: 296, dir: 'right' } },
+      ],
     };
-    let toast = null;
-    core.events.on('dialogue:tag', ({ key, value }) => { toast = { text: `♪ ${key}: ${value}`, until: performance.now() + 1500 }; });
-    interactor.register('guard', {
-      onLook: (c) => c.say('guard.look'),
-      async onInteract() { await dialogue.play(newConversation()); },
-    });
 
-    // Scripts, one set per object id.
-    const pickUp = (item, key) => ({
-      async onInteract(c) { c.inventory.give(item); c.setEnabled(item, false); await c.say(key); },
-      onLook: (c) => c.say(`${item}.look`),
-    });
-    interactor.register('stick', pickUp('stick', 'stick.get'));
-    interactor.register('string', pickUp('string', 'string.get'));
-    interactor.register('grate', {
-      onLook: (c) => c.say('grate.look'),
-      onInteract: (c) => c.say('grate.reach'),
-      async onUse(c) {
-        if (c.item !== 'pole') return false;
-        c.inventory.remove('pole');
-        c.inventory.give('key');
-        await c.say('grate.fish');
-      },
-    });
-    interactor.register('door', {
-      onLook: (c) => c.say('door.look'),
-      async onInteract(c) { await c.say('door.locked'); },
-      async onUse(c) {
-        if (c.item !== 'key') return false;
-        c.inventory.remove('key');
-        c.state.set('flags.doorOpen', true);
-        await c.say('door.open');
-      },
-    });
-    interactor.register('hatch', { onLook: (c) => c.say('hatch.look'), onInteract: () => scene.goTo('cellar') });
-    interactor.register('ladder', { onLook: (c) => c.say('ladder.look'), onInteract: () => scene.goTo('yard', 'hatch') });
+    async function setup() {
+      // The same conversation in three formats; pick one with ?adapter=markdown|twine|ink.
+      const adapter = new URLSearchParams(location.search).get('adapter') ?? 'markdown';
+      const guardFile = { markdown: 'dialogue/guard.md', twine: 'dialogue/guard.twee', ink: 'dialogue/guard.ink.json' }[adapter];
+      const guardTalk = await (await fetch(guardFile)).text();
 
-    core.events.on('room:enter', ({ room: r, start }) => {
-      const hotspots = createHotspots(r);
-      applyHotspotState(core.state, r.id, hotspots);
-      hover.setHotspots(hotspots);
-      hero.navigator = Navigator.fromRoom(r);
-      hero.teleport(r.starts[start].x, r.starts[start].y);
-    });
-    core.events.on('update', (dt) => { hero.update(dt); subtitles.update(dt); });
-    core.loop.start();
-    scene.goTo('yard');
+      game = createGame({
+        parent: 'stage',
+        rooms: [yard, cellar],
+        items: { stick: 'stick', string: 'string', pole: 'fishing pole', key: 'brass key' },
+        recipes: [{ a: 'stick', b: 'string', result: 'pole', say: 'pole.made' }],
+        sounds: {
+          'music-yard': '../assets/audio/music-yard.wav', 'music-cellar': '../assets/audio/music-cellar.wav',
+          pickup: '../assets/audio/pickup.wav', click: '../assets/audio/click.wav', alarm: '../assets/audio/alarm.wav', door: '../assets/audio/door.wav',
+        },
+        sfx: {
+          'inventory:add': 'pickup',
+          'room:exit': 'door',
+          action: (e) => (e.verb === 'interact' && e.handled ? 'click' : null),
+        },
+        strings: {
+          'obj.stick': 'Stick', 'obj.string': 'Ball of string', 'obj.grate': 'Drain grate', 'obj.door': 'Door', 'obj.guard': 'Guard',
+          'obj.hatch': 'Trapdoor', 'obj.ladder': 'Ladder',
+          'stick.get': 'A sturdy stick.', 'stick.look': 'It is a stick.',
+          'string.get': 'Some string. Handy.', 'string.look': 'A ball of string.',
+          'grate.look': 'Something shiny is down there, out of reach.', 'grate.fish': 'Got it! A brass key.',
+          'grate.reach': "I can't reach it with my hands.", 'pole.made': 'A fishing pole. Not bad.',
+          'intro.wake': 'Ugh... where am I?', 'intro.look': 'It is far too dark to see anything.', 'intro.light': 'There. That is better. Let me look around.',
+          'guard.look': 'A guard, leaning on his spear.',
+          'hatch.look': 'A trapdoor. It leads down.', 'ladder.look': 'A ladder back up.',
+          'door.look': 'A heavy door.', 'door.locked': "It's locked.", 'door.open': 'The key fits. Well done!',
+        },
+      });
 
-    // ---- the settings panel ----
-    const $ = (id) => document.getElementById(id);
-    const sliders = { 's-master': 'masterVolume', 's-music': 'musicVolume', 's-sfx': 'sfxVolume', 's-speed': 'textSpeed' };
-    const syncPanel = () => {
-      for (const [id, name] of Object.entries(sliders)) $(id).value = settings.get(name);
-      $('s-subs').checked = settings.get('subtitles');
-    };
-    for (const [id, name] of Object.entries(sliders)) $(id).addEventListener('input', () => settings.set(name, Number($(id).value)));
-    $('s-subs').addEventListener('change', () => settings.set('subtitles', $('s-subs').checked));
-    $('s-reset').addEventListener('click', () => { settings.reset(); syncPanel(); });
-    syncPanel();
+      // ---- scripts: one per object id ----
+      const pickUp = (item, key) => ({
+        async onInteract(c) { game.give(item); c.setEnabled(item, false); await c.say(key); },
+        onLook: (c) => c.say(`${item}.look`),
+      });
+      game.on('stick', pickUp('stick', 'stick.get'));
+      game.on('string', pickUp('string', 'string.get'));
+      game.on('grate', {
+        onLook: (c) => c.say('grate.look'),
+        onInteract: (c) => c.say('grate.reach'),
+        async onUse(c) {
+          if (c.item !== 'pole') return false; // any other item: "I can't use that"
+          game.take('pole');
+          game.give('key');
+          await c.say('grate.fish');
+        },
+      });
+      game.on('door', {
+        onLook: (c) => c.say('door.look'),
+        onInteract: (c) => c.say('door.locked'),
+        async onUse(c) {
+          if (c.item !== 'key') return false;
+          game.take('key');
+          game.flag('doorOpen', true);
+          await c.say('door.open');
+        },
+      });
+      game.on('guard', { onLook: (c) => c.say('guard.look'), onInteract: () => game.talk(guardTalk) });
+      game.on('hatch', { onLook: (c) => c.say('hatch.look'), onInteract: () => game.goTo('cellar') });
+      game.on('ladder', { onLook: (c) => c.say('ladder.look'), onInteract: () => game.goTo('yard', 'hatch') });
 
-    let debug = false;
-    const rectOf = (id, r = scene.room) => { const pts = r.hotspots.find((h) => h.id === id).points; return [pts[0][0], pts[0][1], pts[2][0] - pts[0][0], pts[2][1] - pts[0][1]]; };
+      // The opening, once the yard has faded in the first time: walk, speak, the light comes on.
+      game.on('yard', {
+        onEntered: (c) => c.firstVisit && game.cutscene(async (cs) => {
+          await game.say('intro.wake');
+          await game.hero.walkTo({ x: 200, y: 285, dir: 'right' });
+          await game.say('intro.look');
+          cs.label('light');
+          game.flag('lightOn', true);
+          await cs.wait(600);
+          await game.say('intro.light');
+        }),
+      });
 
-    const sketch = (p) => {
-      p.setup = () => {
-        const canvas = p.createGameCanvas(VIEW_W, VIEW_H);
-        const el = canvas.elt;
-        // Keep the canvas fitted in the stage; bars appear where the shapes differ.
-        const scaler = new LetterboxScaler({ canvas: el, container: $('stage'), width: VIEW_W, height: VIEW_H }).start();
-        const at = (e) => scaler.toLogical(e.clientX, e.clientY);
-        el.addEventListener('contextmenu', (e) => e.preventDefault());
-        el.addEventListener('pointermove', (e) => { const pt = at(e); if (menu.open) menu.move(pt.x, pt.y); pointer.move(pt); });
-        el.addEventListener('pointerleave', () => pointer.leave());
-        el.addEventListener('pointerdown', (e) => {
-          const pt = at(e);
-          if (dialogue.active) { if (menu.open) menu.click(pt.x, pt.y); else subtitles.advance(); return; }
-          if (cutscenes.active) { if (hitSkipButton(pt.x, pt.y, VIEW_W)) cutscenes.skip(); return; }
-          if (!scene.busy) pointer.down({ ...pt, pointerType: e.pointerType, button: e.button });
-        });
-        el.addEventListener('pointerup', (e) => pointer.up(at(e)));
-        el.addEventListener('pointercancel', () => pointer.cancel());
-        window.demo = { core, scene, hero, hover, interactor, inventory, pointer, cutscenes, dialogue, subtitles, menu, settings, audio, scaler }; // for poking at it from the console
-      };
-      p.keyPressed = () => {
-        if (p.key === 'd' || p.key === 'D') debug = !debug;
-        if (p.key === 'Escape') { cutscenes.skip(); subtitles.skip(); }
-        if (/^[1-9]$/.test(p.key)) menu.pick(Number(p.key) - 1);
-      };
-
-      p.draw = () => {
-        const r = scene.room;
-        if (!r) return;
-        drawBackground(p, r, scene.camera);
-        p.noStroke();
-        p.fill(60, 70, 90);
-        p.rect(0, 240, VIEW_W, 120);
-        const open = core.state.get('flags.doorOpen', false);
-
-        if (r.id === 'yard') {
-          p.fill(open ? p.color(20) : p.color(150, 100, 60));
-          p.rect(...rectOf('door'));
-          p.fill(70, 50, 40);
-          p.rect(...rectOf('hatch'));
-          if (core.state.get('rooms.yard.hotspots.stick.enabled', true)) { p.fill(140, 100, 50); p.rect(...rectOf('stick')); }
-          if (core.state.get('rooms.yard.hotspots.string.enabled', true)) { p.fill(220, 220, 200); p.ellipse(275, 268, 28, 24); }
-          p.fill(40); p.rect(...rectOf('grate'));
-          if (!inventory.has('key') && !open) { p.fill(230, 200, 60); p.rect(430, 262, 10, 6); }
-          if (!core.state.get('flags.lightOn', false)) { p.fill(0, 0, 0, 170); p.rect(0, 0, VIEW_W, VIEW_H); }
-          p.fill(90, 120, 200);
-          p.rect(340, 215, 30, 70, 6);
-          p.fill(200, 200, 210);
-          p.rect(372, 195, 4, 90);
+      // ---- drawing: the default shapes, plus a few details (in room coordinates) ----
+      game.drawRoom = (p, room) => {
+        drawRoomShapes(p, room, game);
+        noStroke();
+        if (room.id === 'yard') {
+          if (game.flag('doorOpen')) { fill(20); rect(560, 110, 60, 130); }
+          if (!game.has('key') && !game.flag('doorOpen')) { fill(230, 200, 60); rect(430, 262, 10, 6); } // the key, down the drain
+          fill(200, 200, 210); rect(372, 195, 4, 90); // the guard's spear
+          if (!game.flag('lightOn')) { fill(0, 0, 0, 170); rect(0, 0, 640, 360); }
         } else {
-          p.fill(110, 90, 60);
-          p.rect(...rectOf('ladder'));
-          p.fill(70, 55, 40);
-          p.rect(150, 215, 60, 50, 4);
-          p.rect(260, 225, 50, 40, 4);
+          fill(70, 55, 40); rect(150, 215, 60, 50, 4); rect(260, 225, 50, 40, 4); // barrels
         }
-
-        const s = hero.scale;
-        p.fill(240, 120, 90);
-        p.rect(hero.x - 14 * s, hero.y - 70 * s, 28 * s, 70 * s, 6);
-
-        if (hero.speech) {
-          p.textSize(16); p.textAlign(p.CENTER, p.BOTTOM);
-          const x = Math.min(Math.max(hero.x, 150), VIEW_W - 150);
-          p.fill(0); p.text(hero.speech.text, x + 1, hero.y - 80 * s + 1);
-          p.fill(255, 240, 160); p.text(hero.speech.text, x, hero.y - 80 * s);
-        }
-
-        subtitles.draw(p);
-        menu.draw(p);
-        if (toast && performance.now() < toast.until) { p.fill(255, 255, 255, 200); p.textSize(13); p.textAlign(p.LEFT, p.TOP); p.text(toast.text, 8, 8); }
-        bar.draw(p, inventory.list, interactor.held);
-        if (open) { p.fill(255); p.textSize(20); p.textAlign(p.CENTER, p.CENTER); p.text('You escaped!', VIEW_W / 2, 60); }
-
-        if (cutscenes.active) drawSkipButton(p, VIEW_W);
-        const pos = pointer.pointer;
-        const label = hoverLabel({
-          hotspot: pointer.highlighted ?? hover.hovered, item: pointer.hoveredItem, held: interactor.held,
-          inventory, mode: interactor.mode, verb: interactor.verb, t: (k, v) => core.i18n.t(k, v),
-        });
-        if (pos && !dialogue.active && !cutscenes.active) drawHoverLabel(p, label, pos.x, pos.y);
-        if (debug) drawDebugOverlay(p, { hotspots: hover.hotspots, room: r, camera: scene.camera, hovered: hover.hovered });
-        drawFade(p, scene.fade);
       };
-    };
 
-    new p5(sketch, $('stage'));
+      game.events.on('dialogue:tag', ({ key, value }) => { toast = { text: `♪ ${key}: ${value}`, until: millis() + 1500 }; });
+      bindSettingsPanel(game.settings);
+      window.demo = game; // for poking at it from the console
+      await game.start();
+    }
+
+    let toast = null;
+
+    function draw() {
+      game.draw();
+      if (toast && millis() < toast.until) { fill(255, 200); textSize(13); textAlign(LEFT, TOP); text(toast.text, 8, 8); }
+      if (game.flag('doorOpen')) { fill(255); textSize(20); textAlign(CENTER, CENTER); text('You escaped!', 320, 60); }
+    }
+
+    // The panel's sliders are the game's settings (saved in the browser, separate from save games).
+    function bindSettingsPanel(settings) {
+      const $ = (id) => document.getElementById(id);
+      const sliders = { 's-master': 'masterVolume', 's-music': 'musicVolume', 's-sfx': 'sfxVolume', 's-speed': 'textSpeed' };
+      const show = () => {
+        for (const [id, name] of Object.entries(sliders)) $(id).value = settings.get(name);
+        $('s-subs').checked = settings.get('subtitles');
+      };
+      for (const [id, name] of Object.entries(sliders)) $(id).addEventListener('input', () => settings.set(name, Number($(id).value)));
+      $('s-subs').addEventListener('change', () => settings.set('subtitles', $('s-subs').checked));
+      $('s-reset').addEventListener('click', () => { settings.reset(); show(); });
+      show();
+    }
   </script>
 </body>
 </html>

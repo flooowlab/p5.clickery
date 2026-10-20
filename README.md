@@ -10,9 +10,9 @@ This guide is for people who already know a little p5.js (`setup`, `draw`, drawi
 
 1. [What you get](#what-you-get)
 2. [Running the examples](#running-the-examples)
-3. [Your first game in 10 steps](#your-first-game-in-10-steps) (and the [format reference](docs/reference.md))
+3. [Your first game](#your-first-game) and [the game object](#the-game-object) (and the [format reference](docs/reference.md))
 4. [Words you will see](#words-you-will-see)
-5. [Guide](#guide)
+5. [Guide: the parts](#guide)
    [Setup](#1-setup) · [Events, timers and state](#2-events-timers-and-state) · [Text](#3-text-everything-is-a-key) · [Rooms](#4-rooms) · [Hotspots](#5-hotspots-clickable-areas) · [Walking and actors](#6-walking-and-actors) · [Items and actions](#7-items-and-actions) · [Scripts and cutscenes](#8-scripts-and-cutscenes) · [Dialogue](#9-dialogue) · [Saving](#10-saving-and-loading) · [Fitting the window](#11-fitting-the-window) · [Sound](#12-sound-and-music) · [Settings](#13-player-settings) · [Debugging](#14-debugging)
 6. [Making rooms with the editor](#making-rooms-with-the-editor)
 7. [Recipes](#recipes)
@@ -24,19 +24,20 @@ This guide is for people who already know a little p5.js (`setup`, `draw`, drawi
 
 ## What you get
 
-| You want to... | Use |
+| You want to... | Write |
 | --- | --- |
-| Have rooms, scrolling, fades between rooms | `SceneManager`, `Camera` |
-| Click on things in the picture | `createHotspots`, `HoverTracker` |
-| Have a character walk around obstacles | `Navigator`, `Actor` |
-| Pick up, combine and use items | `Inventory`, `Interactor` |
-| Make mouse and touch both work | `PointerController` |
-| Write what happens when the player acts | `interactor.register(...)` scripts |
-| Play a cutscene the player can skip | `Cutscenes` |
-| Run conversations | Markdown, Twine or Ink dialogue |
-| Save and load | `saveToSlot`, `loadFromSlot` |
-| Fit any window or phone, play music and sound, let players change settings | `LetterboxScaler`, `AudioManager`, `Settings` |
-| Draw rooms with the mouse instead of typing coordinates | the room editor in `tools/editor/` |
+| Rooms, scrolling, fades between rooms | `createGame({ rooms })`, `game.goTo('cellar')` |
+| Click on things in the picture | `hotspots` in the room data, `game.on('door', { onInteract })` |
+| A character who walks around obstacles | `walkable` and `obstacles` in the room data |
+| Pick up, combine and use items | `items`, `recipes`, `game.give()` / `take()` / `has()` |
+| Mouse and touch both working | nothing: built in |
+| A cutscene the player can skip | `game.cutscene(async (cs) => { ... })` |
+| Conversations (Markdown, Twine or Ink) | `game.talk(conversation)` |
+| Save and load | `game.save()`, `game.load()` |
+| Fit any window or phone, music and sound, player settings | built in; `sounds`, a room's `music`, `game.settings` |
+| Draw rooms with the mouse instead of typing coordinates | the [room editor](#making-rooms-with-the-editor) |
+
+Each of these is made of smaller parts that you can also use on their own; the [Guide](#guide) explains them.
 
 It does **not** use p5.play and has no physics. You draw everything with normal p5.js calls; the library tells you *where* things are and *what happened*.
 
@@ -44,7 +45,7 @@ It does **not** use p5.play and has no physics. You draw everything with normal 
 
 ## Running the examples
 
-Everything you can open in a browser is in the [examples](examples) folder, one folder per example, in learning order. The examples load the library as ES modules, so a browser will not run them by double-clicking (`file://`). Serve the **repository folder** with any local web server, for example:
+Everything you can open in a browser is in the [examples](examples) folder, one folder per example, in learning order. The quick start runs by opening its file; the others load files (rooms, sounds, dialogue) or ES modules, which browsers only allow from a web server. Serve the **repository folder** with any local web server, for example:
 
 ```
 python -m http.server 8000
@@ -55,173 +56,168 @@ then visit `http://localhost:8000/examples/` for the list.
 | Example | What it shows |
 | --- | --- |
 | [examples/quickstart](examples/quickstart/index.html) | The smallest working game: one room, a hero, one sign. **Start here.** |
-| [examples/core](examples/core/index.html) | The game loop, timers and state with save/load |
-| [examples/rooms](examples/rooms/index.html) | Two rooms, scrolling, an obstacle to walk around, depth scaling, three kinds of hotspot, debug overlay (press `D`) |
 | [examples/adventure](examples/adventure/index.html) | A puzzle with items and combining, an opening cutscene, a guard to talk to, two rooms with music, sound effects, a settings panel, and scaling to any window or phone. Add `?adapter=ink` or `?adapter=twine` to change the dialogue format |
 | [examples/lighthouse](examples/lighthouse/index.html) | **A complete small game**: three rooms, a puzzle, an Ink conversation, a skippable ending, save and load. Read its source to see how a game is organised (its logic is in `game.js`, with no drawing code) |
+| [examples/core](examples/core/index.html) | *Under the hood:* the game loop, timers and state with save/load, on their own |
+| [examples/rooms](examples/rooms/index.html) | *Under the hood:* the parts `createGame` uses, wired by hand: two rooms, scrolling, an obstacle to walk around, depth scaling, three kinds of hotspot, debug overlay (press `D`) |
 | [tools/editor](tools/editor/index.html) | The room editor: load a picture, draw hotspots and floors, export the room JSON, preview it |
 
 **How the repository is organised**
 
 | Folder | Contains |
 | --- | --- |
-| `src/` | The library. `src/index.js` exports everything. |
+| `dist/` | **The files to use**: `p5.clickery.min.js` (a `<script>` tag after p5), `p5.clickery.js` (the same, readable) and `p5.clickery.esm.js` (for `import`). Built from `src/`; never edit them by hand. |
+| `src/` | The library's source. `src/index.js` exports everything. |
 | `examples/` | Runnable examples (each folder has an `index.html`), plus `assets/` shared by them (generated sounds). |
-| `tools/` | The room editor (`tools/editor/`) and small Node scripts: `compile-ink.mjs` (Ink to JSON), `make-example-audio.mjs` and `make-sample-room.mjs` (regenerate example assets). |
+| `tools/` | The room editor (`tools/editor/`) and small Node scripts: `build.mjs` (builds `dist/`), `compile-ink.mjs` (Ink to JSON), `make-example-audio.mjs` and `make-sample-room.mjs` (regenerate example assets). |
 | `docs/` | The [format reference](docs/reference.md). |
 | `test/` | Automated tests, run with `npm test`: `unit/` has one file per `src/` folder, `tools/` tests the editor, `integration/` plays the Lighthouse from start to finish, `release/` checks the package and the documentation links, `fixtures/` holds test data. |
 
 ---
 
-## Your first game in 10 steps
+## Your first game
 
-This is [examples/quickstart](examples/quickstart/index.html), explained. The whole file is about 100 lines. The paths below (`node_modules/...`, `./src/index.js`) are written for a page in your own project's top folder; the example itself sits two folders down, so it uses `../../`.
+This is [examples/quickstart](examples/quickstart/index.html), explained. It is a normal p5.js sketch in global mode: `setup()` and `draw()`.
 
-### 1. Load p5 and the library
+### 1. Load p5 and p5.clickery
 
 ```html
-<script src="node_modules/p5/lib/p5.min.js"></script>
-<div id="game"></div>
-<script type="module">
-  import { registerClickery, createCore, /* ...what you need... */ } from './src/index.js';
-
-  registerClickery(p5);   // once, before creating the sketch
-</script>
+<script src="p5.min.js"></script>
+<script src="p5.clickery.min.js"></script>
 ```
 
-p5.clickery works with p5.js **2.x** in **instance mode** (`new p5((p) => { ... })`). That is why you write `p.draw`, `p.rect(...)` instead of the global `draw`, `rect(...)`.
+That is the whole installation: `p5.clickery.min.js` is one file, in the [dist](dist) folder. It must come *after* p5. Adding it gives every sketch a new function, `createGame()`. (In the p5.js web editor, upload the file to your project and add the second line to `index.html`.)
 
-### 2. Create the core
+### 2. Create the game
 
 ```js
-const core = createCore();
+let game;
+
+async function setup() {
+  game = createGame({
+    rooms: [{
+      id: 'yard', width: 640, height: 360, color: '#2d3a55',
+      starts: { default: { x: 80, y: 300 } },
+      walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]], color: '#3c4659' }],
+      hotspots: [{
+        id: 'sign', name: 'obj.sign', provider: 'polygon', color: '#96643c',
+        points: [[300, 170], [380, 170], [380, 250], [300, 250]],
+        walkTo: { x: 340, y: 290, dir: 'up' },
+      }],
+    }],
+    strings: {
+      'obj.sign': 'Wooden sign',
+      'sign.look': 'It says: "Welcome to p5.clickery!"',
+      'sign.use': 'I could read it again, but I will not.',
+    },
+  });
 ```
 
-`core` is a bundle of the things almost everything else needs:
+`createGame` makes the canvas (640 × 360 unless you say otherwise), scales it to fit the window, and sets up the hero, mouse and touch input, the inventory bar, subtitles, saving and more.
 
-| Property | What it is |
-| --- | --- |
-| `core.events` | Announcements ("a room was entered", "an item was picked up") |
-| `core.scheduler` | Timers that run on game time |
-| `core.state` | The one place that remembers what has happened (saved by Save) |
-| `core.i18n` | Text lookup ("translations") |
-| `core.loop` | The game clock |
+You give it two things:
+* **rooms**: a room is plain data: its size, where the hero starts, the floor (`walkable`), and the clickable areas (`hotspots`). A `color` fills a shape so you can play before there is any art. You can also give the URL of a room file instead, such as one made with the [room editor](#making-rooms-with-the-editor).
+* **strings**: the text the player sees. Code refers to text by a short **key** like `'sign.look'`, so the game can be translated later.
 
-### 3. Add some text
-
-All text the player sees is looked up by a **key**, never typed directly into the code. This keeps translation possible later.
+### 3. Say what happens
 
 ```js
-core.i18n.add('en', {
-  ...defaultStrings,                      // built-in answers like "I can't use that."
-  'obj.sign': 'Wooden sign',              // the name shown on hover
-  'sign.look': 'It says: "Welcome to p5.clickery!"',
-  'sign.use': 'I could read it again, but I will not.',
-});
+  game.on('sign', {
+    onLook: (ctx) => ctx.say('sign.look'),     // right-click, or hold a finger on it
+    onInteract: (ctx) => ctx.say('sign.use'),  // click or tap
+  });
 ```
 
-### 4. Describe a room
+`'sign'` is the hotspot's `id`. The hero first walks to the hotspot's `walkTo` point, then the function runs. `ctx.say(key)` makes the hero speak.
 
-A room is a plain object (you can also keep it in a `.json` file):
-
-```js
-const room = {
-  id: 'yard', width: 640, height: 360, color: '#2d3a55',
-  starts: { default: { x: 80, y: 300 } },                 // where the hero appears
-  walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]] }],
-  hotspots: [{
-    id: 'sign', name: 'obj.sign', provider: 'polygon',     // a clickable area
-    points: [[300, 170], [380, 170], [380, 250], [300, 250]],
-    walkTo: { x: 340, y: 290, dir: 'up' },                 // the hero walks here first
-  }],
-};
-const scene = new SceneManager({ ...core, viewWidth: 640, viewHeight: 360, loadRoom: async () => room });
-```
-
-`loadRoom` is a function that gives back a room by its id. Here we only have one room, so it always returns that one. In a real game you would `fetch('rooms/' + id + '.json')`.
-
-### 5. Add a hero and the interaction pieces
+### 4. Start, and draw every frame
 
 ```js
-const hero = new Actor({ id: 'hero', speed: 140, directions: 4, translate: (key) => core.i18n.t(key) });
-const hover = new HoverTracker(core.events);
-const inventory = new Inventory({ state: core.state, events: core.events, items: {} });
-const interactor = new Interactor({ hero, state: core.state, events: core.events, inventory, hover });
-```
-
-### 6. Say what happens
-
-```js
-interactor.register('sign', {
-  onLook:     (ctx) => ctx.say('sign.look'),     // right-click or long press
-  onInteract: (ctx) => ctx.say('sign.use'),      // normal click
-});
-```
-
-`'sign'` is the hotspot's `id`. `ctx.say(key)` makes the hero speak the text for that key.
-
-### 7. Connect rooms to the game
-
-```js
-core.events.on('room:enter', ({ room, start }) => {
-  hover.setHotspots(createHotspots(room));                 // make this room's hotspots clickable
-  hero.navigator = Navigator.fromRoom(room);               // let the hero walk on this room's floor
-  hero.teleport(room.starts[start].x, room.starts[start].y);
-});
-core.events.on('update', (dt) => hero.update(dt));         // move the hero every frame
-core.loop.start();
-await scene.goTo('yard');                                  // enter the first room
-```
-
-### 8. Add input
-
-```js
-const bar = new InventoryBar({ viewWidth: 640, viewHeight: 360 });
-const pointer = new PointerController({ interactor, hover, camera: scene.camera, bar, scheduler: core.scheduler });
-```
-
-### 9. Write the sketch
-
-```js
-new p5((p) => {
-  p.setup = () => {
-    const canvas = p.createGameCanvas(640, 360);           // like createCanvas, remembers the logical size
-    const el = canvas.elt;
-    const at = (e) => clientToLogical(e.clientX, e.clientY, el.getBoundingClientRect(), 640, 360);
-    el.addEventListener('contextmenu', (e) => e.preventDefault());
-    el.addEventListener('pointermove', (e) => pointer.move(at(e)));
-    el.addEventListener('pointerleave', () => pointer.leave());
-    el.addEventListener('pointerdown', (e) => pointer.down({ ...at(e), pointerType: e.pointerType, button: e.button }));
-    el.addEventListener('pointerup', (e) => pointer.up(at(e)));
-  };
-
-  p.draw = () => {
-    drawBackground(p, scene.room, scene.camera);
-    // ...draw your floor, objects and hero with normal p5 calls (see the next step)...
-    drawFade(p, scene.fade);
-  };
-}, document.getElementById('game'));
-```
-
-`clientToLogical` converts a browser mouse position into game coordinates, even when the canvas is scaled by CSS. Always use it for pointer positions.
-
-### 10. Draw things where they are
-
-The library never draws your art for you. In `p.draw`, draw each thing at the position the library gives you:
-
-```js
-p.fill(240, 120, 90);
-p.rect(hero.x - 14, hero.y - 70, 28, 70, 6);               // hero.x / hero.y are the hero's feet
-
-if (hero.speech) {                                         // the line the hero is saying
-  p.text(hero.speech.text, hero.x, hero.y - 80);
+  await game.start();
 }
 
-const label = hoverLabel({ hotspot: hover.hovered, held: interactor.held, inventory, t: (k, v) => core.i18n.t(k, v) });
-drawHoverLabel(p, label, pointer.pointer.x, pointer.pointer.y);
+function draw() {
+  game.draw();
+}
 ```
 
-Run it. Click the floor: the hero walks. Right-click the sign: the hero walks over and reads it. Click the sign: the other line. That is the whole idea; everything else in this guide adds more of the same.
+`game.start()` loads anything given by URL and enters the first room. `game.draw()` draws the whole game. That is all: click the floor to walk, right-click the sign to read it.
+
+### 5. Make it yours
+
+Draw your own art by replacing parts of `game.draw()`. They draw in room coordinates (the camera is already applied), and anything you leave alone keeps its default:
+
+```js
+let heroImg;
+
+async function setup() {
+  heroImg = await loadImage('hero.png');
+  game = createGame({ /* ... */ });
+  game.drawHero = (p, hero) => image(heroImg, hero.x - 16, hero.y - 64);   // feet at (hero.x, hero.y)
+  game.drawRoom = (p, room) => { /* draw the room's details */ };
+  await game.start();
+}
+```
+
+Or give the room a `background` picture, and the hero `animations` (see [Drawing an actor](#6-walking-and-actors)), and the default drawing uses them.
+
+Change any default with an option, for example `createGame({ width: 320, height: 180, mode: 'verbs', fadeMs: 600 })`. [The game object](#the-game-object) lists them all.
+
+**Running it.** A sketch like this one, with everything in the page, runs by just opening the HTML file. As soon as the game loads files (room JSON, pictures, sounds), the browser needs a local web server; see [Running the examples](#running-the-examples).
+
+---
+
+## The game object
+
+`createGame(options)` returns the game. Everything has a default; pass only what you need.
+
+**Options**
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `rooms` | `[]` | Room objects, or URLs of room JSON files (pictures named in a room file load relative to it). A list, or an object `{ id: room }`. |
+| `strings` | `{}` | Text keys and their text. The built-in answers ("I can't use that.") are already included. |
+| `items` | `{}` | Inventory items: `{ key: 'brass key' }`, or `{ key: { text: 'brass key', image: 'key.png' } }`. |
+| `recipes` | `[]` | Items that combine: `[{ a: 'stick', b: 'string', result: 'pole' }]` (see [Items and actions](#7-items-and-actions)). |
+| `sounds` | `{}` | Sound id → file: `{ theme: 'theme.ogg', click: 'click.wav' }`. A room's `music` field plays one. |
+| `sfx` | `{}` | Sounds for events: `{ 'inventory:add': 'pickup' }` (see [Sound and music](#12-sound-and-music)). |
+| `width`, `height` | `640`, `360` | The game's fixed size. The canvas is scaled to fit, never stretched. |
+| `hero` | `{}` | The hero's options: `speed` (150), `directions` (4 or 8), `animations`. |
+| `mode` | `'smart'` | `'verbs'` for a verb list (Look at / Use / Walk to). |
+| `fadeMs` | `300` | Length of the fade between rooms. |
+| `followHero` | `true` | In rooms wider than the screen, the camera follows the hero. |
+| `debugKey` | `'d'` | Toggles outlines of hotspots and floors. `null` turns it off. |
+| `parent` | the page | An element (or its id) to put the game in. The game fills it. |
+| `fit` | `true` | Scale the canvas to fill its parent. `false` leaves it at its size. |
+| `canvas` | `true` | `false` uses a canvas you created yourself. |
+| `language` | `'en'` | The language of `strings`. |
+| `saveSlot` | `'game'` | Where `save()` and `load()` keep the game. |
+| `Story` | — | inkjs's `Story` class, if you import inkjs instead of loading `ink.js` with a script tag. |
+
+**Methods**
+
+| Method | Does |
+| --- | --- |
+| `game.on(id, { onInteract, onLook, onUse, ... })` | The script of a hotspot, item or room. |
+| `await game.start(room?, startName?)` | Loads what is needed and enters a room (default: the first). |
+| `game.goTo(room, startName?)` | Changes room, with a fade. |
+| `game.say(key)` | The hero says a line. Resolves when it is over. |
+| `game.talk(conversation)` | Plays a conversation: Markdown or Twee text, Twison, compiled Ink JSON, or an Ink story. Ink variables are saved with the game; Ink can call `giveItem("key")` and `setFlag("name")`. |
+| `game.cutscene(async (cs) => { ... })` | A cutscene: input is locked, the player can skip it. |
+| `game.flag(name)` / `game.flag(name, value)` | Reads or sets a yes/no fact (saved). |
+| `game.give(item)`, `game.take(item)`, `game.has(item)` | The inventory. |
+| `game.save()`, `await game.load()` | Save and load (also where the hero stands). |
+| `game.draw()` | Draws everything. Call it in `draw()`. |
+| `game.hotspot(id)` | The live hotspot (`.enabled` switches it off). |
+| `game.addRoom(room or URL)` | Adds a room later. |
+
+**Parts of `game.draw()` you can replace:** `game.drawRoom(p, room)`, `game.drawHero(p, hero)`, `game.drawSpeech(p, hero)`. They draw in room coordinates. The defaults are on `p5.clickery` as `drawRoomShapes`, `drawHeroDefault` and `drawSpeechDefault`, so a replacement can call the default and add to it. Extra things to draw in depth order with the hero go in `game.actors` as `{ baseline, draw(p) }`.
+
+**What it sets up for you:** the canvas and scaling, mouse/touch/keyboard (Escape skips a cutscene or a line, 1–9 pick a dialogue choice), moving the game forward every frame (it pauses with `noLoop()`), entering rooms (hotspots, floor, the hero at the start), the camera, the inventory bar and hover labels, subtitles and dialogue choices, the Skip button, player settings (`game.settings`), and sound (`game.audio`, when you give `sounds`).
+
+**Every part is reachable** for when you need more control: `game.scene`, `game.hero`, `game.inventory`, `game.interactor`, `game.cutscenes`, `game.dialogue`, `game.subtitles`, `game.menu`, `game.bar`, `game.pointer`, `game.hover`, `game.settings`, `game.audio`, `game.scaler`, `game.events`, `game.state`, `game.i18n`, `game.scheduler`. The [Guide](#guide) explains each of them.
+
+**Instance mode and modules.** In instance mode call `p.createGame(...)` and `p.draw = () => game.draw()`. With ES modules, `import { registerClickery } from './p5.clickery.esm.js'` and call `registerClickery(p5)` once before `new p5(...)`. `new Game(options)` makes the same game without p5 at all (for tests, or a game's logic in its own module: see [examples/lighthouse](examples/lighthouse)); `attachP5(game, p)` connects it to a sketch later.
 
 ---
 
@@ -247,10 +243,14 @@ Run it. Click the floor: the hero walks. Right-click the sign: the hero walks ov
 
 ## Guide
 
+`createGame()` puts together everything in this guide, so you only need it to change how something works or to use a part on its own. With the script tag, every part is on `p5.clickery` (`const { Navigator } = p5.clickery;`); with modules, import it by name. Inside a game, each part is a property: `game.scene`, `game.hero`, `game.inventory` and so on ([the list](#the-game-object)).
+
 ### 1. Setup
 
+The script tag registers p5.clickery with p5 by itself. With ES modules, register it once:
+
 ```js
-import { registerClickery } from './src/index.js';
+import { registerClickery } from './p5.clickery.esm.js';
 registerClickery(p5);                    // once, before `new p5(...)`
 
 new p5((p) => {
@@ -294,6 +294,8 @@ Events the library sends:
 | `dialogue:choose` | The player chose | `{ index, text }` |
 
 **The game loop**
+
+A game made with `createGame()` needs none of this: it moves forward with p5's own frames (and pauses with `noLoop()`). Use the loop when you build a game from the parts yourself, without p5 driving it:
 
 ```js
 core.loop.start();        // begins running; calls scheduler and sends `update`
@@ -875,8 +877,10 @@ The text of dialogue comes straight from the dialogue file (that file is what yo
 
 ### 10. Saving and loading
 
+With `createGame()`: `game.save()` and `await game.load()` (which also put the hero back where it stood). Underneath, they do this:
+
 ```js
-import { saveToSlot, loadFromSlot, exportToFile, importFromFile } from './src/index.js';
+const { saveToSlot, loadFromSlot, exportToFile, importFromFile } = p5.clickery;
 
 core.state.set('hero', hero.toJSON());          // the hero's position is not saved automatically
 saveToSlot(core.state, 'slot1');                // to the browser's storage
@@ -1110,23 +1114,29 @@ core.scheduler.every(1000, () => core.state.set('vars.seconds', core.state.get('
 
 | Problem | Likely cause |
 | --- | --- |
-| The page is blank and the console says something about modules or CORS | You opened the file directly. Serve the folder with a local web server. |
-| `p5.registerAddon is not a function` / `p.createGameCanvas is not a function` | The library needs p5.js **2.x**. Also call `registerClickery(p5)` *before* `new p5(...)`. |
+| `createGame is not defined` | Load `p5.clickery.min.js` *after* `p5.min.js`, and use p5.js **2.x**. With modules, call `registerClickery(p5)` before `new p5(...)`. |
+| The page is blank and the console mentions CORS, `fetch` or modules | The game loads files (rooms, sounds, dialogue) or uses modules, and the page was opened directly. Serve the folder with a local web server. |
+| `this is an Ink story: load ink.js first` | Add `<script src="ink.js"></script>` (from the inkjs package) before your sketch, or pass `Story` to `createGame`. |
+| `p5.registerAddon is not a function` | The library needs p5.js **2.x**. |
 | Clicks land in the wrong place | Use `clientToLogical(...)` for every pointer position, and make sure the size you pass matches `createGameCanvas`. |
-| Nothing happens when I click a hotspot | Did you call `hover.setHotspots(createHotspots(room))` in `room:enter`? Did you register a handler for its id? Turn on the debug overlay. |
-| The hero does not walk | Set `hero.navigator = Navigator.fromRoom(room)`, call `hero.update(dt)` every frame and `core.loop.start()`. |
+| Nothing happens when I click a hotspot | Is its `id` the one in `game.on(id, ...)`? Press `D` to see the outlines. (Without `createGame`: did you call `hover.setHotspots(createHotspots(room))` in `room:enter`?) |
+| The hero does not walk | Is there a `walkable` area under the click? Is `game.draw()` called in `draw()` (and not `noLoop()`)? (Without `createGame`: set `hero.navigator`, and call `hero.update(dt)` every frame.) |
 | The hero walks to the wrong spot | The click was off the floor and snapped to the nearest walkable point, or a `walkable` polygon is wrong. Check the overlay. |
-| I see `[some.key]` on screen | That text key is not in `core.i18n`. Add it, or pass the actor `translate: (k) => core.i18n.t(k)`. |
-| `unknown item "x"` | Add the item to `items` when creating the `Inventory`. |
+| I see `[some.key]` on screen | That text key has no text. Add it to `strings`. |
+| `unknown item "x"` | Add the item to `items`. |
 | `state values must be JSON-serialisable` | You tried to store a function or `undefined`. Store plain data; use `null` for "nothing". |
 | The hero says "I can't use that" | The handler is missing or returned `false`. That is the default answer working as designed. |
-| A cutscene hangs | Something in it waits for time or a walk but nothing advances the game. Check `core.loop.start()` was called and the game is not paused. |
+| A cutscene hangs | Something in it waits for time or a walk but nothing advances the game. Is `game.draw()` called every frame, and is the sketch looping? |
 | `already changing rooms` | You called `goTo` while another change was running. Wait for the first `await` to finish. |
-| `a conversation is already running` | Call `dialogue.play` once at a time. |
+| `a conversation is already running` | Start one conversation at a time (`await game.talk(...)`). |
 
 ---
 
 ## Cheat sheet
+
+**Game**: `createGame({ rooms, strings, items, recipes, sounds })` · `game.on(id, {...})` · `await game.start()` · `game.draw()` · `goTo` · `say` · `talk` · `cutscene` · `flag` · `give` / `take` / `has` · `save` / `load` · `drawRoom` / `drawHero` / `drawSpeech`
+
+**The parts, one by one** (on `p5.clickery` with the script tag):
 
 **Setup**: `registerClickery(p5)` · `p.createGameCanvas(w, h)` · `createCore()` → `{ events, scheduler, state, i18n, loop }`
 
@@ -1150,7 +1160,7 @@ core.scheduler.every(1000, () => core.state.set('vars.seconds', core.state.get('
 
 **Debug**: `drawDebugOverlay`
 
-All of these are exported from `src/index.js`.
+All of these are on `p5.clickery` (script tag) and exported by name from `p5.clickery.esm.js` (modules).
 
 ---
 

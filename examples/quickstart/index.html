@@ -4,112 +4,46 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>p5.clickery quick start</title>
-  <style>
-    body { margin: 0; background: #111; color: #ddd; font-family: sans-serif; }
-    #game { display: flex; justify-content: center; padding: 16px; }
-    #game canvas { max-width: 100%; height: auto; touch-action: none; }
-  </style>
   <script src="../../node_modules/p5/lib/p5.min.js"></script>
+  <script src="../../dist/p5.clickery.min.js"></script>
 </head>
 <body>
-  <div id="game"></div>
-  <script type="module">
-    import {
-      registerClickery, createCore, SceneManager, HoverTracker, createHotspots, Navigator, Actor,
-      Inventory, Interactor, PointerController, InventoryBar, hoverLabel, defaultStrings,
-      clientToLogical, drawBackground, drawFade, drawHoverLabel,
-    } from '../../src/index.js';
+  <script>
+    let game;
 
-    registerClickery(p5);                         // once, before creating the sketch
-    const W = 640, H = 360;
+    async function setup() {
+      game = createGame({
+        // A room is plain data: its size, where the hero starts, the floor, and what can be clicked.
+        rooms: [{
+          id: 'yard', width: 640, height: 360, color: '#2d3a55',
+          starts: { default: { x: 80, y: 300 } },
+          walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]], color: '#3c4659' }],
+          hotspots: [{
+            id: 'sign', name: 'obj.sign', provider: 'polygon', color: '#96643c',
+            points: [[300, 170], [380, 170], [380, 250], [300, 250]],
+            walkTo: { x: 340, y: 290, dir: 'up' },
+          }],
+        }],
+        // Everything the player reads is a text key.
+        strings: {
+          'obj.sign': 'Wooden sign',
+          'sign.look': 'It says: "Welcome to p5.clickery!"',
+          'sign.use': 'I could read it again, but I will not.',
+        },
+      });
 
-    // 1. The core: events, timers, one state store, translations, the game loop.
-    const core = createCore();
-    core.i18n.add('en', {
-      ...defaultStrings,
-      'obj.sign': 'Wooden sign',
-      'sign.look': 'It says: "Welcome to p5.clickery!"',
-      'sign.use': 'I could read it again, but I will not.',
-    });
+      // What happens when the player looks at (right-click) or uses (click) the sign.
+      game.on('sign', {
+        onLook: (ctx) => ctx.say('sign.look'),
+        onInteract: (ctx) => ctx.say('sign.use'),
+      });
 
-    // 2. A room is plain data.
-    const room = {
-      id: 'yard', width: W, height: H, color: '#2d3a55',
-      starts: { default: { x: 80, y: 300 } },
-      walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]] }],
-      hotspots: [{
-        id: 'sign', name: 'obj.sign', provider: 'polygon',
-        points: [[300, 170], [380, 170], [380, 250], [300, 250]],
-        walkTo: { x: 340, y: 290, dir: 'up' },
-      }],
-    };
-    const scene = new SceneManager({ ...core, viewWidth: W, viewHeight: H, loadRoom: async () => room });
+      await game.start();
+    }
 
-    // 3. A hero, hover detection, inventory and the thing that turns clicks into actions.
-    const hero = new Actor({ id: 'hero', speed: 140, directions: 4, translate: (key) => core.i18n.t(key) });
-    const hover = new HoverTracker(core.events);
-    const inventory = new Inventory({ state: core.state, events: core.events, items: {} });
-    const interactor = new Interactor({ hero, state: core.state, events: core.events, inventory, hover });
-
-    // 4. What happens when the player looks at or uses the sign.
-    interactor.register('sign', {
-      onLook: (ctx) => ctx.say('sign.look'),
-      onInteract: (ctx) => ctx.say('sign.use'),
-    });
-
-    // 5. When a room is entered, build its hotspots and walkable area, and place the hero.
-    core.events.on('room:enter', ({ room, start }) => {
-      hover.setHotspots(createHotspots(room));
-      hero.navigator = Navigator.fromRoom(room);
-      hero.teleport(room.starts[start].x, room.starts[start].y);
-    });
-    core.events.on('update', (dt) => hero.update(dt));
-    core.loop.start();
-    await scene.goTo('yard');
-
-    // 6. Mouse and touch input.
-    const bar = new InventoryBar({ viewWidth: W, viewHeight: H });
-    const pointer = new PointerController({
-      interactor, hover, camera: scene.camera, bar, scheduler: core.scheduler,
-    });
-
-    // 7. The p5 sketch (instance mode).
-    new p5((p) => {
-      p.setup = () => {
-        const canvas = p.createGameCanvas(W, H);
-        const el = canvas.elt;
-        const at = (e) => clientToLogical(e.clientX, e.clientY, el.getBoundingClientRect(), W, H);
-        el.addEventListener('contextmenu', (e) => e.preventDefault());
-        el.addEventListener('pointermove', (e) => pointer.move(at(e)));
-        el.addEventListener('pointerleave', () => pointer.leave());
-        el.addEventListener('pointerdown', (e) => pointer.down({ ...at(e), pointerType: e.pointerType, button: e.button }));
-        el.addEventListener('pointerup', (e) => pointer.up(at(e)));
-      };
-
-      p.draw = () => {
-        drawBackground(p, scene.room, scene.camera);
-        p.noStroke();
-        p.fill(60, 70, 90);
-        p.rect(0, 250, W, 90);                       // the floor
-        p.fill(150, 100, 60);
-        p.rect(300, 170, 80, 80);                    // the sign
-        p.fill(240, 120, 90);
-        p.rect(hero.x - 14, hero.y - 70, 28, 70, 6); // the hero
-
-        if (hero.speech) {                           // what the hero is saying
-          p.fill(255, 240, 160);
-          p.textSize(16);
-          p.textAlign(p.CENTER, p.BOTTOM);
-          p.text(hero.speech.text, hero.x, hero.y - 80);
-        }
-
-        const label = hoverLabel({
-          hotspot: hover.hovered, held: interactor.held, inventory, t: (k, v) => core.i18n.t(k, v),
-        });
-        if (pointer.pointer) drawHoverLabel(p, label, pointer.pointer.x, pointer.pointer.y);
-        drawFade(p, scene.fade);
-      };
-    }, document.getElementById('game'));
+    function draw() {
+      game.draw();
+    }
   </script>
 </body>
 </html>

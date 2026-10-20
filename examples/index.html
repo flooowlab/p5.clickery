@@ -27,20 +27,24 @@
     <p class="lead">In learning order. Each one is a single folder you can read top to bottom.</p>
     <ol>
       <li><a class="card" href="quickstart/"><b>Quick start</b>
-        <span class="what">The smallest working game: one room, a hero, one sign. Start here.</span>
-        <span class="shows">Rooms, hotspots, walking, look and interact, text keys.</span></a></li>
-      <li><a class="card" href="core/"><b>Core</b>
-        <span class="what">The game loop, timers and the state store, with save, load and export.</span>
-        <span class="shows">createCore, scheduler, state, saveToSlot / loadFromSlot.</span></a></li>
-      <li><a class="card" href="rooms/"><b>Rooms</b>
-        <span class="what">Two scrolling rooms, an obstacle to walk around, depth scaling and three kinds of hotspot. Press D for the debug overlay.</span>
-        <span class="shows">SceneManager, camera, Navigator, polygon / svg / colorMask hotspots, sorting by baseline.</span></a></li>
+        <span class="what">The smallest working game: one room, a hero, one sign, about 40 lines. Start here. Runs by opening the file.</span>
+        <span class="shows">createGame, rooms as data, game.on, text keys, game.draw.</span></a></li>
       <li><a class="card" href="adventure/"><b>Adventure</b>
         <span class="what">A puzzle with items and combining, an opening cutscene, a guard to talk to, music, sound, settings, and scaling to any window or phone.</span>
-        <span class="shows">Inventory, cutscenes, dialogue in Markdown, Twine or Ink (add <code>?adapter=twine</code> or <code>?adapter=ink</code>), audio, settings, letterboxing.</span></a></li>
+        <span class="shows">createGame with items, recipes, a cutscene, game.talk in Markdown, Twine or Ink (add <code>?adapter=twine</code> or <code>?adapter=ink</code>), sounds, a settings panel, custom drawing.</span></a></li>
       <li><a class="card" href="lighthouse/"><b>The Lighthouse</b>
         <span class="what">A complete small game: three rooms, a puzzle, an Ink conversation, a skippable ending, save and load.</span>
-        <span class="shows">How a real game is organised: data files, one script file per room, game logic with no drawing code (also the integration test).</span></a></li>
+        <span class="shows">How a bigger game is organised with modules: data files, one script file per room, the game's logic in its own module (also the integration test).</span></a></li>
+    </ol>
+    <h2>Under the hood</h2>
+    <p class="lead">The parts that createGame() puts together, used one by one: for when you want to change how something works.</p>
+    <ol>
+      <li><a class="card" href="core/"><b>Core</b>
+        <span class="what">The game loop, timers and the state store on their own, with save, load and export.</span>
+        <span class="shows">createCore, scheduler, state, saveToSlot / loadFromSlot.</span></a></li>
+      <li><a class="card" href="rooms/"><b>Rooms</b>
+        <span class="what">The parts createGame uses, put together by hand: two scrolling rooms, an obstacle to walk around, depth scaling and three kinds of hotspot. Press D for the debug overlay.</span>
+        <span class="shows">SceneManager, camera, Navigator, polygon / svg / colorMask hotspots, sorting by baseline.</span></a></li>
     </ol>
     <h2>Tool</h2>
     <ol>

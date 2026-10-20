@@ -2,7 +2,22 @@
 
 The exact shape of the data files and scripts. For a gentle introduction read the [README](../README.md) first; for a complete small game see [examples/lighthouse](../examples/lighthouse).
 
-**Contents:** [Room JSON](#room-json) · [Hotspots](#hotspots) · [Items and recipes](#items-and-recipes) · [Scripts](#scripts) · [Cutscenes](#cutscenes) · [Dialogue files](#dialogue-files) · [State paths](#state-paths) · [Events](#events) · [Text keys](#text-keys-the-library-uses) · [Settings](#settings) · [Save file](#save-file)
+**Contents:** [createGame](#creategame) · [Room JSON](#room-json) · [Hotspots](#hotspots) · [Items and recipes](#items-and-recipes) · [Scripts](#scripts) · [Cutscenes](#cutscenes) · [Dialogue files](#dialogue-files) · [State paths](#state-paths) · [Events](#events) · [Text keys](#text-keys-the-library-uses) · [Settings](#settings) · [Save file](#save-file)
+
+---
+
+## createGame
+
+`createGame(options)` (a p5 function once `p5.clickery.min.js` is loaded, or `p.createGame` in instance mode) returns a `Game`. The options and methods are listed in the README under [The game object](../README.md#the-game-object). The exact rules:
+
+* **Rooms** given as URLs are fetched by `game.start()` (or `game.preload()`). A room's `background` and `layers` images load relative to the room file; for a room given as an object, relative to the page. Items' `image` loads relative to the page. A picture that fails to load is skipped with a console warning.
+* **Items:** `{ id: 'text' }` becomes `{ name: 'item.<id>' }` plus the string `item.<id>` = text. `{ id: { text, image, name } }`: `name` defaults to `item.<id>`; `text`, when given, is stored under that key.
+* **`game.talk(source, options)`** picks the format: a runner is used as it is; an inkjs `Story`, compiled Ink JSON (an object with `inkVersion`, or text starting with `{"inkVersion"`) is Ink; an object with a `passages` list is Twison; text starting with `::` is Twee 3; any other text is Markdown. For Ink: every global variable is kept in the state store unless `options.sync` lists which; `giveItem` and `setFlag` are bound (plus `options.externals`); a compiled story is parsed once and reused; Ink needs `Story` (option) or a global `inkjs` (the `ink.js` script). For Markdown, `options.start` names the first section.
+* **Each frame** p5's `predraw` hook calls `game.update(deltaTime)` before your `draw()`. A step is capped at 100 ms. `game.update(dt)` can also be called by hand (tests, headless games).
+* **`game.draw()`** draws, in order: the room colour, the background and `bg` layers, then in room coordinates `drawRoom`, the hero and `game.actors` sorted by baseline, `drawSpeech` (while the hero talks); then the `fg` layers, subtitles, choices, the inventory bar, the Skip button, the hover label, the debug outlines (when `game.debug`) and the fade. `drawRoom(p, room, game)`, `drawHero(p, hero, game)` and `drawSpeech(p, hero, game)` can be replaced. The defaults: `drawRoomShapes` fills every walkable area, obstacle and enabled hotspot that has a `color`; `drawHeroDefault` draws the hero's animation, or a simple figure; `drawSpeechDefault` writes the line above the hero.
+* **Input:** pointer events on the canvas (mouse, touch, pen) and keys on the page: Escape skips a cutscene and the current line, 1–9 choose a dialogue option, the `debugKey` (default `d`) toggles `game.debug`. Keys typed into form fields are ignored.
+* **Page:** with `fit` on, the canvas fills its parent element with letterbox bars. If the parent is the page (`<body>` or p5's `<main>`), the page is made full-window. A parent with no height takes the game's shape.
+* **`new Game(options)`** makes the same game with no p5 (no canvas, input or drawing); `attachP5(game, p, { canvas, parent, fit })` adds them.
 
 ---
 
@@ -80,7 +95,7 @@ Provider fields:
 | `svg` | Either `d`: SVG path data in room coordinates, or `svg`: a file name plus optional `pathId` (default: the hotspot's `id`) — the `<path>` whose `id` or `inkscape:label` matches. Needs `assets.text(name)` in `createHotspots`. SVG transforms are not applied. |
 | `colorMask` | `mask`: a picture name, `color`: `"#rrggbb"` (or `"#rgb"`) of this hotspot in the picture, `tolerance`: per-channel difference allowed (default 4). Needs `assets.pixels(name)` returning `{ data, width, height }`. The mask can have a different size from the room. Export it without antialiasing or colour management. |
 
-Any other keys on a hotspot (for example a `color` used by your own drawing code) stay on `scene.room.hotspots[i]`.
+Any other keys on a hotspot stay on `scene.room.hotspots[i]`. A `color` on a hotspot, walkable area or obstacle is used by `createGame`'s default drawing.
 
 Directions: `up`, `right`, `down`, `left`, and with 8-direction actors `up_right`, `down_right`, `down_left`, `up_left`.
 

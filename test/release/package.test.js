@@ -80,3 +80,38 @@ describe('documentation', () => {
     for (const [, anchor] of contents.matchAll(/\]\(#([^)]+)\)/g)) assert.ok(headings.has(anchor), `no heading for #${anchor}`);
   });
 });
+
+describe('dist (the files for a <script> tag)', () => {
+  it('is up to date with src/', async () => {
+    const { spawnSync } = await import('node:child_process');
+    const run = spawnSync(process.execPath, ['tools/build.mjs', '--check'], { cwd: root, encoding: 'utf8' });
+    assert.equal(run.status, 0, run.stderr || run.stdout);
+  });
+
+  it('p5.clickery.min.js registers itself with p5 and exposes the library on p5.clickery', async () => {
+    const vm = await import('node:vm');
+    const registered = [];
+    class FakeP5 {
+      static registerAddon(addon) {
+        const lifecycles = {};
+        addon(FakeP5, FakeP5.prototype, lifecycles);
+        registered.push(lifecycles);
+      }
+    }
+    const context = vm.createContext({ p5: FakeP5, console });
+    vm.runInContext(read('dist/p5.clickery.min.js'), context);
+    assert.equal(FakeP5.clickery.version, pkg.version);
+    assert.equal(typeof FakeP5.prototype.createGame, 'function', 'createGame() is available to sketches');
+    assert.equal(typeof FakeP5.prototype.createGameCanvas, 'function');
+    assert.equal(typeof registered[0].predraw, 'function', 'games are updated every frame');
+    for (const name of ['Game', 'Navigator', 'createMarkdownRunner', 'AudioManager', 'parseRoom']) {
+      assert.equal(typeof FakeP5.clickery[name], 'function', `p5.clickery.${name}`);
+    }
+  });
+
+  it('the CDN fields point at the minified file', () => {
+    assert.equal(pkg.unpkg, 'dist/p5.clickery.min.js');
+    assert.equal(pkg.jsdelivr, 'dist/p5.clickery.min.js');
+    assert.ok(pkg.files.includes('dist'));
+  });
+});

@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { Story } from 'inkjs/full';
-import { createGame, ROOMS } from '../../examples/lighthouse/game.js';
+import { createLighthouse, ROOMS } from '../../examples/lighthouse/game.js';
 import { parseRoom } from '../../src/index.js';
 
 // The Lighthouse example doubles as the library's integration test: the whole game is
@@ -16,8 +16,8 @@ const memoryStorage = () => {
   return { getItem: (k) => (map.has(k) ? map.get(k) : null), setItem: (k, v) => map.set(k, String(v)), removeItem: (k) => map.delete(k) };
 };
 
-async function newGame() {
-  const game = await createGame({ loadJson, loadText, Story });
+async function newGame({ storage = memoryStorage() } = {}) {
+  const game = await createLighthouse({ loadJson, loadText, Story, storage });
   const said = [];
   const say = game.hero.say.bind(game.hero);
   game.hero.say = (key, options) => { said.push(key); return say(key, options); };
@@ -34,7 +34,7 @@ async function settle(game, promise, { choose = 0, limit = 6000 } = {}) {
   promise.then(() => { done = true; }, () => { done = true; });
   for (let i = 0; i < limit && !done; i++) {
     await new Promise((r) => setImmediate(r));
-    game.step();
+    game.update(20);
     if (game.menu.open) game.menu.pick(choose);
     else if (game.subtitles.active) { game.subtitles.advance(); game.subtitles.advance(); }
   }
@@ -61,7 +61,7 @@ async function solve(game, { skipEnding = false } = {}) {
   if (!skipEnding) return use(game, 'matches', 'lamp');
   game.interactor.select('matches');
   const ending = game.interactor.clickHotspot(game.hotspot('lamp'));
-  for (let i = 0; i < 60 && !game.cutscenes.active; i++) { await new Promise((r) => setImmediate(r)); game.step(); }
+  for (let i = 0; i < 60 && !game.cutscenes.active; i++) { await new Promise((r) => setImmediate(r)); game.update(20); }
   assert.ok(game.cutscenes.skip());
   return settle(game, ending);
 }
@@ -78,7 +78,7 @@ describe('the data', () => {
 
   it('every name, item and line the scripts say has a text', async () => {
     const game = await newGame();
-    for (const r of Object.values(game.rooms)) for (const h of r.hotspots) assert.ok(game.core.i18n.has(h.name), `name ${h.name}`);
+    for (const r of game.rooms.values()) for (const h of r.hotspots) assert.ok(game.core.i18n.has(h.name), `name ${h.name}`);
     for (const item of Object.values(game.inventory.items)) assert.ok(game.core.i18n.has(item.name), `item ${item.name}`);
     await game.start().then(() => {});
     // (the playthrough below checks the lines that are actually spoken)
@@ -183,17 +183,17 @@ describe('playing the Lighthouse', () => {
   });
 
   it('can be saved in the middle and finished in a fresh session', async () => {
-    const first = await newGame();
+    const storage = memoryStorage();
+    const first = await newGame({ storage });
     await settle(first, first.start());
     await click(first, 'oil-can');
     await click(first, 'door');
     await click(first, 'keeper', { choose: 1 });
     const position = [first.hero.x, first.hero.y].map(Math.round);
-    const storage = memoryStorage();
-    first.save(storage);
+    first.save();
 
-    const second = await newGame();
-    assert.equal(await second.load(storage), true);
+    const second = await newGame({ storage });
+    assert.equal(await second.load(), true);
     assert.equal(room(second), 'hall');
     assert.deepEqual(second.inventory.list.sort(), ['matches', 'oil-can']);
     assert.deepEqual([second.hero.x, second.hero.y].map(Math.round), position);
@@ -206,13 +206,13 @@ describe('playing the Lighthouse', () => {
     assert.deepEqual(second.errors, []);
 
     // a game that was saved before picking anything up still has the can on the dock
-    const early = await newGame();
+    const early = await newGame({ storage });
     await settle(early, early.start());
-    early.save(storage, 'early');
-    const late = await newGame();
-    await late.load(storage, 'early');
+    early.save('early');
+    const late = await newGame({ storage });
+    await late.load('early');
     assert.equal(late.hotspot('oil-can').enabled, true);
-    assert.equal(await newGame().then((g) => g.load(storage, 'none')), false);
+    assert.equal(await newGame({ storage }).then((g) => g.load('none')), false);
   });
 
   it('a skipped ending ends in the same state as a played one', async () => {

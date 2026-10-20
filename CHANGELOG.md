@@ -50,7 +50,23 @@ First release. Everything below is new.
 - A missing or unregistered sound (for example a `# sfx:` tag with no matching sound) is now silent with one console warning, instead
   of throwing from inside an event and aborting the game flow.
 
+### Added (simpler use, in the p5.js style)
+- `createGame(options)`: one call sets up a whole game with defaults: canvas and scaling, input, rooms, hero, inventory bar,
+  subtitles and choices, cutscenes, settings, sound, and a default `game.draw()` whose parts (`drawRoom`, `drawHero`,
+  `drawSpeech`) can be replaced. Available as a global function in p5's global mode and as `p.createGame` in instance mode.
+  Games advance with p5's frames (the addon's `predraw` hook). Methods: `on`, `start`, `goTo`, `say`, `talk`, `cutscene`,
+  `flag`, `give` / `take` / `has`, `save` / `load`, `draw`, `hotspot`, `addRoom`.
+- `Game` (the same without p5, for tests and logic modules) and `attachP5(game, p, options)`.
+- `game.talk()` accepts Markdown, Twee, Twison, compiled Ink JSON, an inkjs `Story` or a runner; Ink variables are saved by default.
+- Rooms can be given as URLs (fetched by `start()`), with pictures loaded relative to the room file. Items can be plain text.
+- `color` on walkable areas, obstacles and hotspots is drawn by the default drawing.
+- `dist/p5.clickery.min.js` (one `<script>` tag after p5; registers itself and exposes the library on `p5.clickery`),
+  `dist/p5.clickery.js` and `dist/p5.clickery.esm.js`, built with esbuild by `tools/build.mjs`. `npm run build`, `npm run dev`
+  (watch); the build also runs before `npm test` and in a git pre-commit hook, so `dist/` stays in step with `src/`.
+
 ### Changed
+- The examples use `createGame` and the single script (the Lighthouse uses `Game` from modules; `core` and `rooms` show the
+  parts on their own). The quick start runs by opening the file, with no server.
 - Repository layout: every runnable page is in `examples/` (`quickstart`, `core`, `rooms`, `adventure`, `lighthouse`, with an index page
   and shared `assets/`); the old top-level pages and `demo/` folder are gone. Tests are grouped as `test/unit` (one file per `src/`
   folder), `test/tools`, `test/integration`, `test/release` and `test/fixtures`.

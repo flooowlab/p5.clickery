@@ -7,8 +7,7 @@
   <style>
     html, body { height: 100%; margin: 0; }
     body { display: flex; flex-direction: column; background: #0b0d12; color: #cfd3dc; font: 14px system-ui, sans-serif; overflow: hidden; }
-    #stage { flex: 1; min-height: 0; background: #000; touch-action: none; }
-    #stage canvas { touch-action: none; }
+    #stage { flex: 1; min-height: 0; background: #000; }
     #bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 6px 12px; }
     #bar button { font: inherit; color: inherit; background: #222735; border: 1px solid #3a4152; border-radius: 4px; padding: 3px 10px; cursor: pointer; }
     #bar span { opacity: .7; }
@@ -21,121 +20,50 @@
     <button id="save">Save</button><button id="load">Load</button><span id="msg"></span>
     <span>Click to act, right-click or hold to look. Tap once to highlight and again to act on touch. Esc skips the ending.</span>
   </div>
+  <!-- This example is organised as a project with ES modules: the game's logic is in
+       game.js and scripts/, and this page only adds p5 and the drawing details. -->
   <script type="module">
     import { Story } from '../../node_modules/inkjs/dist/ink.mjs';
-    import {
-      registerClickery, LetterboxScaler, AudioManager, Settings, bindTextSettings, PointerController, InventoryBar, hoverLabel,
-      drawBackground, drawFade, drawHoverLabel, hitSkipButton, drawSkipButton,
-    } from '../../src/index.js';
-    import { createGame, VIEW } from './game.js';
+    import { registerClickery, attachP5, drawRoomShapes } from '../../src/index.js';
+    import { createLighthouse } from './game.js';
 
     registerClickery(p5);
     const $ = (id) => document.getElementById(id);
     const here = (path) => new URL(path, import.meta.url);
+    const sound = (name) => here(`../assets/audio/${name}.wav`).href;
 
-    // Sound is optional: it reuses the generated demo sounds, and the game runs without it.
-    const settings = new Settings();
-    settings.load();
-    let audio = null;
-    try {
-      audio = new AudioManager({ settings });
-      const sound = (name) => here(`../assets/audio/${name}.wav`).href;
-      audio.register({
-        'music-dock': sound('music-yard'), 'music-hall': sound('music-cellar'),
-        pickup: sound('pickup'), bell: sound('alarm'), // stand-ins for real sounds
-      });
-      await audio.loadAll();
-      audio.unlockOnGesture(window);
-    } catch (err) { console.warn('no sound:', err.message); audio = null; }
-
-    const game = await createGame({
+    const game = await createLighthouse({
       loadJson: async (path) => (await fetch(here(path))).json(),
       loadText: async (path) => (await fetch(here(path))).text(),
-      Story, audio,
+      Story,
+      sounds: { 'music-dock': sound('music-yard'), 'music-hall': sound('music-cellar'), pickup: sound('pickup'), bell: sound('alarm') },
     });
-    const { core, scene, hero, hover, inventory, interactor, cutscenes, dialogue, subtitles, menu } = game;
-    audio?.attach(core.events, { sfx: { 'inventory:add': 'pickup' } });
-    bindTextSettings(settings, { subtitles, actors: [hero] });
-
-    const bar = new InventoryBar({ viewWidth: VIEW.width, viewHeight: VIEW.height });
-    const pointer = new PointerController({ interactor, hover, camera: scene.camera, bar, scheduler: core.scheduler });
-    const t = (key, vars) => core.i18n.t(key, vars);
-
-    core.loop.start();
-    game.start();
     window.game = game;
 
-    // ---- save and load (the hero's position is saved with the state) ----
     const say = (text) => { $('msg').textContent = text; setTimeout(() => { if ($('msg').textContent === text) $('msg').textContent = ''; }, 2000); };
-    $('save').onclick = () => { game.save(localStorage); say('Saved.'); };
-    $('load').onclick = async () => say((await game.load(localStorage)) ? 'Loaded.' : 'Nothing saved yet.');
-
-    // ---- drawing: each room is just its hotspot shapes, filled with the colour in the room file ----
-    const flag = (name) => core.state.get(`flags.${name}`, false);
-    const hidden = (room, def) => core.state.get(`rooms.${room.id}.hotspots.${def.id}.enabled`, true) === false;
+    $('save').onclick = () => { game.save(); say('Saved.'); };
+    $('load').onclick = async () => say((await game.load()) ? 'Loaded.' : 'Nothing saved yet.');
 
     new p5((p) => {
-      p.setup = () => {
-        const canvas = p.createGameCanvas(VIEW.width, VIEW.height);
-        const el = canvas.elt;
-        const scaler = new LetterboxScaler({ canvas: el, container: $('stage'), width: VIEW.width, height: VIEW.height }).start();
-        const at = (e) => scaler.toLogical(e.clientX, e.clientY);
-        el.addEventListener('contextmenu', (e) => e.preventDefault());
-        el.addEventListener('pointermove', (e) => { const pt = at(e); if (menu.open) menu.move(pt.x, pt.y); pointer.move(pt); });
-        el.addEventListener('pointerleave', () => pointer.leave());
-        el.addEventListener('pointerdown', (e) => {
-          const pt = at(e);
-          if (dialogue.active) { if (menu.open) menu.click(pt.x, pt.y); else subtitles.advance(); return; }
-          if (cutscenes.active) { if (hitSkipButton(pt.x, pt.y, VIEW.width)) cutscenes.skip(); return; }
-          if (!scene.busy) pointer.down({ ...pt, pointerType: e.pointerType, button: e.button });
-        });
-        el.addEventListener('pointerup', (e) => pointer.up(at(e)));
-        el.addEventListener('pointercancel', () => pointer.cancel());
+      p.setup = async () => {
+        attachP5(game, p); // canvas, input, scaling to #stage, and game.draw()
+
+        // The default room drawing fills the shapes that have a "color" in the room files;
+        // add the lamp's glow and the ship at the end on top of it.
+        game.drawRoom = (p, room) => {
+          drawRoomShapes(p, room, game);
+          if (room.id !== 'lamp-room') return;
+          p.noStroke();
+          if (game.flag('lampLit')) {
+            p.fill('#ffd96a'); p.rect(280, 100, 80, 150);
+            p.fill(255, 217, 106, 40); p.rect(0, 0, 640, 360);
+          }
+          if (game.flag('ending')) { p.fill(240); p.triangle(520, 170, 545, 170, 532, 150); p.rect(510, 170, 45, 8); }
+        };
+
+        await game.start();
       };
-
-      p.keyPressed = () => {
-        if (p.key === 'Escape') { cutscenes.skip(); subtitles.skip(); }
-        if (/^[1-9]$/.test(p.key)) menu.pick(Number(p.key) - 1);
-      };
-
-      p.draw = () => {
-        const room = scene.room;
-        if (!room) return;
-        drawBackground(p, room, scene.camera);
-        p.noStroke();
-        p.fill(255, 255, 255, 18);
-        p.rect(0, 250, VIEW.width, 80); // the floor
-
-        for (const def of room.hotspots) {
-          if (hidden(room, def)) continue;
-          let color = p.color(def.color ?? '#888');
-          if (def.id === 'lamp' && flag('lampLit')) color = p.color('#ffd96a');
-          p.fill(color);
-          p.beginShape();
-          for (const [x, y] of def.points) p.vertex(x, y);
-          p.endShape(p.CLOSE);
-        }
-        if (room.id === 'lamp-room' && flag('lampLit')) { p.fill(255, 217, 106, 40); p.rect(0, 0, VIEW.width, VIEW.height); }
-        if (room.id === 'lamp-room' && flag('ending')) { p.fill(240); p.triangle(520, 170, 545, 170, 532, 150); p.rect(510, 170, 45, 8); } // the ship
-
-        const s = hero.scale;
-        p.fill(240, 120, 90);
-        p.rect(hero.x - 14 * s, hero.y - 70 * s, 28 * s, 70 * s, 6);
-        if (hero.speech) {
-          p.textSize(16); p.textAlign(p.CENTER, p.BOTTOM);
-          const x = Math.min(Math.max(hero.x, 160), VIEW.width - 160);
-          p.fill(0); p.text(hero.speech.text, x + 1, hero.y - 80 * s + 1, 300);
-          p.fill(255, 240, 160); p.text(hero.speech.text, x, hero.y - 80 * s, 300);
-        }
-
-        subtitles.draw(p);
-        menu.draw(p);
-        bar.draw(p, inventory.list, interactor.held);
-        if (cutscenes.active) drawSkipButton(p, VIEW.width);
-        const label = hoverLabel({ hotspot: pointer.highlighted ?? hover.hovered, item: pointer.hoveredItem, held: interactor.held, inventory, t });
-        if (pointer.pointer && !dialogue.active && !cutscenes.active) drawHoverLabel(p, label, pointer.pointer.x, pointer.pointer.y);
-        drawFade(p, scene.fade);
-      };
+      p.draw = () => game.draw();
     }, $('stage'));
   </script>
 </body>
