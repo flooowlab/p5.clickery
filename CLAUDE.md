@@ -21,6 +21,8 @@ A JavaScript library for point-and-click adventure games, built on p5.js 2.x. It
 - **Dialogue:** `inkjs` (official runtime) for Ink. Parse Twee 3 or Twison JSON for Twine. A small markdown format we define ourselves.
 - **Tests:** Node's built-in runner (`node --test`, zero dependencies) for logic (state, nav, hit-testing, dialogue adapters). Visual checks go in a demo page. Vitest 3 and 5 both failed to install on this device (native binary issues), so revisit Vitest when a dev machine is available.
 - **Language:** plain JavaScript (ES modules). Add TypeScript types later if the API stabilises.
+- **Distribution:** `dist/p5.clickery.min.js` is the file users load with a `<script>` tag after p5 (like other p5 add-ons); also `p5.clickery.js` and `p5.clickery.esm.js`. Built from `src/` with esbuild (a dev dependency only: it is the build tool, not a runtime dependency). Never edit `dist/` by hand: `npm run build`, or `npm run dev` to rebuild on every change. The build also runs before `npm test` and in the pre-commit hook (`.githooks/`, set up by `npm install`), and a release test fails if `dist/` is stale.
+- **API style:** p5-like: one call with defaults (`createGame`) for the common case, every part still reachable for the rest. New features get a sensible default and an option, not required wiring.
 
 ## Architecture
 
@@ -37,7 +39,23 @@ ui/        HUD, inventory bar, hover label, input (mouse/touch), letterboxed sca
 audio/     music per room with crossfade, SFX, optional voice
 debug/     overlay (hotspots, walkable polygons, paths) and state inspector
 tools/     level editor, a separate page that exports JSON
+game/      createGame / Game: all of the above wired together with defaults, plus the p5 binding (canvas, input, draw)
 ```
+
+### Repository layout
+
+```text
+dist/       built files to distribute (p5.clickery.min.js, .js, .esm.js); generated, do not edit
+src/        the library (src/index.js exports everything; src/global.js is the script-tag entry)
+examples/   runnable pages, one folder each, learning order: quickstart, core, rooms, adventure, lighthouse
+            examples/index.html lists them; examples/assets/ holds assets shared between examples
+tools/      editor/ (room editor page) and Node scripts: build.mjs, compile-ink.mjs, make-example-audio.mjs, make-sample-room.mjs
+docs/       reference.md (formats: room, hotspot, items, scripts, dialogue, state, events, saves)
+test/       unit/ (one file per src/ folder), tools/, integration/ (Lighthouse playthrough), release/, fixtures/
+```
+
+New runnable pages go in their own `examples/<name>/` folder and get a card in `examples/index.html`. Pages load p5 and
+`dist/p5.clickery.min.js` with `../../` paths (only the Lighthouse imports `src/`, as a modules-project example). Tests for a `src/<area>/` module go in `test/unit/<area>.test.js`.
 
 ### Core rules
 1. **One state store.** It holds flags, variables, inventory, per-room object state and the current room. Everything is JSON-serialisable, so save/load is a dump and restore.
@@ -62,7 +80,7 @@ Each phase ends with a working demo and passing tests.
 
 ### P0 · Setup
 - [x] Folder is `p5clickery` (no dot, so it is shell-safe). Package name and global namespace are `p5.clickery`.
-- [x] Add `package.json` (ES module, p5 pinned to 2.3.4), `.gitignore`, and a demo `index.html` that loads p5 2.x from `node_modules`.
+- [x] Add `package.json` (ES module, p5 pinned to 2.3.4), `.gitignore`, and a demo page that loads p5 2.x from `node_modules` (now `examples/core/`).
 - [x] Register the addon (`registerClickery`) and create a fixed-size canvas in instance mode (`createGameCanvas`).
 - [x] Tests run with `npm test` (Node's built-in runner, see Stack decisions).
 - [x] Check the demo in a browser.
@@ -130,7 +148,7 @@ Each phase ends with a working demo and passing tests.
 
 ### P10 · Docs and release
 - [x] README with a quick start, and a room and script format reference (`docs/reference.md`).
-- [x] A small example adventure (3 rooms, 1 puzzle, Ink dialogue) that doubles as an integration test (`examples/lighthouse`, `test/example.test.js`).
+- [x] A small example adventure (3 rooms, 1 puzzle, Ink dialogue) that doubles as an integration test (`examples/lighthouse`, `test/integration/lighthouse.test.js`).
 - [ ] Publish a 0.1 release. Prepared: version 0.1.0, MIT licence, changelog, package contents. The git tag and `npm publish` are left to the maintainer (see the release notes in the PR).
 
 ## Patterns worth borrowing

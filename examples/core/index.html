@@ -9,7 +9,7 @@
     #game { display: flex; justify-content: center; padding: 16px; }
     #game canvas { max-width: 100%; height: auto; image-rendering: pixelated; }
   </style>
-  <script src="node_modules/p5/lib/p5.min.js"></script>
+  <script src="../../node_modules/p5/lib/p5.min.js"></script>
 </head>
 <body>
   <div id="game"></div>
@@ -19,11 +19,14 @@
     <button id="load">Load</button>
     <button id="export">Export file</button>
   </p>
-  <script type="module">
-    import { registerClickery, createCore, saveToSlot, loadFromSlot, exportToFile } from './src/index.js';
+  <script src="../../dist/p5.clickery.min.js"></script>
+  <script>
+    // Under the hood: the parts createGame() puts together, used one by one. They are all on p5.clickery.
+    const {
+      createCore, saveToSlot, loadFromSlot, exportToFile,
+    } = p5.clickery;
 
     // Must run before the p5 instance is created.
-    registerClickery(p5);
 
     // P1 demo: the core drives a clock; clicking counts clicks in the state store.
     const core = createCore();

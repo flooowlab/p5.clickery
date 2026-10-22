@@ -23,13 +23,18 @@
   "main": "src/index.js",
   "exports": {
     ".": "./src/index.js",
+    "./dist/*": "./dist/*",
     "./package.json": "./package.json"
   },
+  "unpkg": "dist/p5.clickery.min.js",
+  "jsdelivr": "dist/p5.clickery.min.js",
   "sideEffects": false,
   "files": [
     "src",
+    "dist",
     "docs",
     "examples",
+    "!examples/assets",
     "tools/editor",
     "tools/compile-ink.mjs",
     "README.md",
@@ -37,12 +42,18 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "build": "node tools/build.mjs",
+    "dev": "node tools/build.mjs --watch",
+    "pretest": "node tools/build.mjs",
+    "test": "node --test \"test/**/*.test.js\"",
+    "prepublishOnly": "npm test",
+    "prepare": "node tools/setup-git-hooks.mjs"
   },
   "peerDependencies": {
     "p5": ">=2.0.0 <3"
   },
   "devDependencies": {
+    "esbuild": "^0.28.2",
     "inkjs": "^2.4.0",
     "p5": "2.3.4"
   }

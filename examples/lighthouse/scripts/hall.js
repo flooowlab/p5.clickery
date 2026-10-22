@@ -1,20 +1,21 @@
-export default ({ scene, dialogue, newKeeperConversation }) => ({
+export default (game, dialogue) => ({
   'door-out': {
     onLook: (c) => c.say('door-out.look'),
-    onInteract: () => scene.goTo('dock', 'fromHall'),
+    onInteract: () => game.goTo('dock', 'fromHall'),
   },
 
   keeper: {
     onLook: (c) => c.say('keeper.look'),
-    // The conversation is an Ink story; it can hand over the matches and set flags.
-    onInteract: async () => { await dialogue.play(newKeeperConversation()); },
+    // An Ink story. Its variables are saved with the game, and its EXTERNAL functions
+    // giveItem() and setFlag() hand over the matches and set "keeperMet".
+    onInteract: () => game.talk(dialogue.keeper),
   },
 
   stairs: {
     onLook: (c) => c.say('stairs.look'),
-    async onInteract(c) {
-      if (!c.state.get('flags.keeperMet', false)) return c.say('stairs.blocked');
-      return scene.goTo('lamp-room');
+    onInteract(c) {
+      if (!game.flag('keeperMet')) return c.say('stairs.blocked');
+      return game.goTo('lamp-room');
     },
   },
 });

@@ -10,20 +10,19 @@
     #game canvas { max-width: 100%; height: auto; touch-action: none; }
     p { text-align: center; margin: 4px; }
   </style>
-  <script src="node_modules/p5/lib/p5.min.js"></script>
+  <script src="../../node_modules/p5/lib/p5.min.js"></script>
 </head>
 <body>
   <div id="game"></div>
   <p>Click the floor to walk (the hero goes around the table, shrinks with distance and passes behind it). Click the door to change room, the crate to open it. Arrow keys scroll, D toggles the debug overlay.</p>
   <p><button id="save">Save</button> <button id="load">Load</button></p>
-  <script type="module">
-    import {
-      registerClickery, createCore, SceneManager, HoverTracker, createHotspots, clientToLogical,
-      Navigator, Actor, sortByBaseline,
-      drawBackground, drawForeground, drawFade, drawDebugOverlay, saveToSlot, loadFromSlot,
-    } from './src/index.js';
+  <script src="../../dist/p5.clickery.min.js"></script>
+  <script>
+    // Under the hood: the parts createGame() puts together, used one by one. They are all on p5.clickery.
+    const {
+      createCore, SceneManager, HoverTracker, createHotspots, clientToLogical, Navigator, Actor, sortByBaseline, drawBackground, drawForeground, drawFade, drawDebugOverlay, saveToSlot, loadFromSlot,
+    } = p5.clickery;
 
-    registerClickery(p5);
 
     const VIEW_W = 640, VIEW_H = 360;
 

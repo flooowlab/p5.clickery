@@ -4,7 +4,7 @@ import {
   createCore, Actor, Navigator, SceneManager, HoverTracker, createHotspots, Inventory, Interactor,
   Cutscenes, Scripts, Fade, Scheduler, firstLook, firstUse, once, hitSkipButton, PointerController,
   InventoryBar, Camera,
-} from '../src/index.js';
+} from '../../src/index.js';
 
 const floor = { id: 'floor', points: [[0, 200], [640, 200], [640, 300], [0, 300]] };
 const roomJson = (id) => ({

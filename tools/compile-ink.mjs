@@ -1,4 +1,4 @@
-// Compiles .ink files to .ink.json for the Ink adapter: node tools/compile-ink.mjs demo/guard.ink
+// Compiles .ink files to .ink.json for the Ink adapter: node tools/compile-ink.mjs examples/lighthouse/dialogue/keeper.ink
 import fs from 'node:fs';
 import { Compiler } from 'inkjs/full';
 

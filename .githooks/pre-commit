@@ -1,0 +1,4 @@
+#!/bin/sh
+# Rebuild dist/ from src/ so the committed bundle always matches the source.
+node tools/build.mjs > /dev/null || exit 1
+git add dist

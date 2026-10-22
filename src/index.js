@@ -16,10 +16,28 @@ export { skipButtonRect, hitSkipButton, drawSkipButton } from './ui/skip-button.
 export { InventoryBar, drawHoverLabel } from './ui/inventory-bar.js';
 export { clientToLogical } from './ui/pointer.js';
 export { drawDebugOverlay } from './debug/overlay.js';
+export * from './game/index.js';
 
-// p5 addon: adds the p5.clickery namespace and createGameCanvas() to every sketch.
-export function clickeryAddon(p5, fn) {
-  p5.clickery = { version: VERSION };
+import { Game } from './game/game.js';
+import { attachP5 } from './game/p5-binding.js';
+
+// p5 addon: adds the p5.clickery namespace, createGameCanvas() and createGame() to every
+// sketch (as global functions in global mode), and moves every game forward each frame.
+export function clickeryAddon(p5, fn, lifecycles) {
+  p5.clickery = { ...p5.clickery, version: VERSION };
+
+  // Creates a whole game with sensible defaults, its canvas, input and drawing.
+  // See GAME_DEFAULTS in src/game/game.js for the options.
+  fn.createGame = function (options = {}) {
+    return attachP5(new Game(options), this, options);
+  };
+
+  // Games advance in step with p5's own frames (so noLoop() pauses them too).
+  if (lifecycles) {
+    lifecycles.predraw = function () {
+      for (const game of this._clickeryGames ?? []) game.update(this.deltaTime);
+    };
+  }
 
   // Canvas with a fixed logical size. Scaling it to the window is handled in P8.
   fn.createGameCanvas = function (width, height) {

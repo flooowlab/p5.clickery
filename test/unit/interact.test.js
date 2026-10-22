@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createCore, Actor, Camera, HoverTracker, createHotspots, parseRoom, Inventory, Interactor,
   PointerController, InventoryBar, hoverLabel, defaultStrings, applyHotspotState, StateStore, EventBus,
-} from '../src/index.js';
+} from '../../src/index.js';
 
 const poly = (x, y) => [[x, y], [x + 40, y], [x + 40, y + 40], [x, y + 40]];
 

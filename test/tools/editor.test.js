@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
   parseRoom, createHotspots, Navigator, Actor, HoverTracker, SceneManager, createCore, pointInPolygon, dist,
-} from '../src/index.js';
-import { floodSelect, emptyMask, maskCount, maskBounds, unionMask, subtractMask } from '../tools/editor/select.js';
-import { traceContours, maskToRegions } from '../tools/editor/contours.js';
-import { simplifyLoop, roundLoop, signedArea } from '../tools/editor/simplify.js';
-import { EditorModel, createShapesFromMask } from '../tools/editor/model.js';
-import { sampleScene, SAMPLE } from '../tools/editor/sample.js';
+} from '../../src/index.js';
+import { floodSelect, emptyMask, maskCount, maskBounds, unionMask, subtractMask } from '../../tools/editor/select.js';
+import { traceContours, maskToRegions } from '../../tools/editor/contours.js';
+import { simplifyLoop, roundLoop, signedArea } from '../../tools/editor/simplify.js';
+import { EditorModel, createShapesFromMask } from '../../tools/editor/model.js';
+import { sampleScene, SAMPLE } from '../../tools/editor/sample.js';
 
 // '#' is selected. Rows of equal length.
 const maskOf = (rows) => ({
@@ -400,7 +400,7 @@ describe('a room drawn in the editor loads in the runtime with no hand edits', (
 describe('the room the editor really exported', () => {
   // tools/editor/sample-room.json is the file the editor's Export button produced for the
   // sample picture (wand for the floor, door and lamp; polygon tool for the sign), untouched.
-  const json = JSON.parse(fs.readFileSync(new URL('../tools/editor/sample-room.json', import.meta.url), 'utf8'));
+  const json = JSON.parse(fs.readFileSync(new URL('../../tools/editor/sample-room.json', import.meta.url), 'utf8'));
 
   it('loads in the runtime as it is', () => {
     const room = parseRoom(json);
