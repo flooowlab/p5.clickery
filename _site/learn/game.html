@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game · Learn · p5.clickery</title>
+<meta name="description" content="Everything a game is made of, one small step at a time.">
+<script>try{var t=localStorage.getItem('clickery-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+
+</head>
+<body class="section-learn">
+<header class="top">
+  <a class="brand" href="../">p5.clickery</a>
+  <nav><a href="../learn/" class="active" aria-current="page">Learn</a><a href="../docs/">Docs</a><a href="../examples/">Examples</a><a href="../tools/editor/">Editor</a><a href="https://github.com/flooowlab/p5.clickery">GitHub</a></nav>
+  <button class="theme" type="button" id="theme" aria-label="Switch between light and dark">◐</button>
+</header>
+<main class="learn-topic"><nav class="tabs"><a href="game.html" class="active">Game</a></nav><div class="topic"><aside class="side"><p class="group">Game</p><ol><li><a href="?page=0" data-page="0">A first game</a></li><li><a href="?page=1" data-page="1">Click on things</a></li><li><a href="?page=2" data-page="2">Remember things</a></li><li><a href="?page=3" data-page="3">Pick things up</a></li><li><a href="?page=4" data-page="4">Go to another room</a></li><li><a href="?page=5" data-page="5">Cutscenes</a></li><li><a href="?page=6" data-page="6">Conversations</a></li><li><a href="?page=7" data-page="7">Save and load</a></li><li><a href="?page=8" data-page="8">Hide and show</a></li><li><a href="?page=9" data-page="9">See the shapes</a></li><li><a href="?page=10" data-page="10">Draw it yourself</a></li><li><a href="?page=11" data-page="11">The parts inside</a></li></ol></aside><div class="pages"><section class="lesson" data-page="0" hidden>
+  <h1>A first game</h1>
+  <div class="prose"><p>A game is a room, a hero and a few lines of code. <code>createGame</code> takes a description of your game and returns the object you will use for everything else. Call <code>game.start()</code> once to enter the first room, and <code>game.draw()</code> on every frame.</p>
+<p>A room is plain data: its size, where the hero appears, and the floor the hero may walk on. Click anywhere on the floor and the hero walks there.</p>
+<p>Try changing the room&#39;s <code>color</code>, or move the corners of the floor. Every other option is in <a href="../docs/types.html#GameOptions"><code>GameOptions</code></a>.</p>
+</div>
+  <p class="covers"><code>createGame</code> <code>GameOptions</code> <code>Game.start</code> <code>Game.draw</code></p>
+  <div class="workbench">
+    <div class="editor">
+      <div class="bar"><span>sketch.js</span><span><button type="button" class="run">Run ▶</button><button type="button" class="reset">Reset</button></span></div>
+      <textarea class="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Sketch code">let game;
+
+async function setup() {
+  game = createGame({
+    rooms: [{
+      id: 'yard', width: 640, height: 360, color: '#2d3a55',
+      starts: { default: { x: 120, y: 300 } },
+      walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]], color: '#3c4659' }],
+    }],
+  });
+  await game.start();
+}
+
+function draw() {
+  game.draw();
+}</textarea>
+    </div>
+    <div class="stage"><iframe title="Result" sandbox="allow-scripts allow-same-origin"></iframe><pre class="error" hidden></pre></div>
+  </div>
+  <p class="pager"><span></span><a href="?page=1" data-page="1">Next →</a></p>
+</section><section class="lesson" data-page="1" hidden>
+  <h1>Click on things</h1>
+  <div class="prose"><p>A <strong>hotspot</strong> is a clickable area of a room. Give it an <code>id</code>, a <code>name</code> (what shows when you hover it) and the corners of its shape. Then use <code>game.on</code> to say what happens: <code>onInteract</code> runs on a click, <code>onLook</code> on a right-click or a long press on a touch screen.</p>
+<p>Everything the player reads is a <strong>text key</strong>, like <code>&#39;sign.look&#39;</code>. The texts live in <code>strings</code>. That makes translating a game easy later, and a typo shows up as <code>[sign.lok]</code> instead of as nothing.</p>
+<p>Click the sign, then right-click it. <code>walkTo</code> is where the hero stands before the handler runs. You can also say a line from anywhere with <code>game.say(&#39;sign.look&#39;)</code>.</p>
+</div>
+  <p class="covers"><code>Game.on</code> <code>Game.say</code></p>
+  <div class="workbench">
+    <div class="editor">
+      <div class="bar"><span>sketch.js</span><span><button type="button" class="run">Run ▶</button><button type="button" class="reset">Reset</button></span></div>
+      <textarea class="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Sketch code">let game;
+
+async function setup() {
+  game = createGame({
+    rooms: [{
+      id: 'yard', width: 640, height: 360, color: '#2d3a55',
+      starts: { default: { x: 80, y: 300 } },
+      walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]], color: '#3c4659' }],
+      hotspots: [{
+        id: 'sign', name: 'obj.sign', provider: 'polygon', color: '#96643c',
+        points: [[300, 170], [380, 170], [380, 250], [300, 250]],
+        walkTo: { x: 340, y: 290, dir: 'up' },
+      }],
+    }],
+    strings: {
+      'obj.sign': 'Wooden sign',
+      'sign.look': 'It says: &quot;Welcome!&quot;',
+      'sign.use': 'I have read it twice already.',
+    },
+  });
+
+  game.on('sign', {
+    onLook: (ctx) =&gt; ctx.say('sign.look'),
+    onInteract: (ctx) =&gt; ctx.say('sign.use'),
+  });
+
+  await game.start();
+}
+
+function draw() {
+  game.draw();
+}</textarea>
+    </div>
+    <div class="stage"><iframe title="Result" sandbox="allow-scripts allow-same-origin"></iframe><pre class="error" hidden></pre></div>
+  </div>
+  <p class="pager"><a href="?page=0" data-page="0">← Previous</a><a href="?page=2" data-page="2">Next →</a></p>
+</section><section class="lesson" data-page="2" hidden>
+  <h1>Remember things</h1>
+  <div class="prose"><p>A <strong>flag</strong> is a yes/no fact the game remembers: the lever is pulled, the door is open. <code>game.flag(&#39;open&#39;)</code> reads it, and <code>game.flag(&#39;open&#39;, true)</code> sets it. Flags are saved with the game, and a flag nobody set is <code>false</code>.</p>
+<p>Pull the lever, then try the door.</p>
+</div>
+  <p class="covers"><code>Game.flag</code></p>
+  <div class="workbench">
+    <div class="editor">
+      <div class="bar"><span>sketch.js</span><span><button type="button" class="run">Run ▶</button><button type="button" class="reset">Reset</button></span></div>
+      <textarea class="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Sketch code">let game;
+
+async function setup() {
+  game = createGame({
+    rooms: [{
+      id: 'yard', width: 640, height: 360, color: '#2d3a55',
+      starts: { default: { x: 80, y: 300 } },
+      walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]], color: '#3c4659' }],
+      hotspots: [
+        { id: 'lever', name: 'obj.lever', provider: 'polygon', color: '#c9a227',
+          points: [[200, 200], [230, 200], [230, 250], [200, 250]], walkTo: { x: 215, y: 290, dir: 'up' } },
+        { id: 'door', name: 'obj.door', provider: 'polygon', color: '#6b4a2f',
+          points: [[500, 120], [580, 120], [580, 250], [500, 250]], walkTo: { x: 540, y: 290, dir: 'up' } },
+      ],
+    }],
+    strings: {
+      'obj.lever': 'Lever', 'obj.door': 'Door',
+      'lever.pulled': 'Clunk. Something unlocked.',
+      'lever.back': 'Clunk. Back where it was.',
+      'door.shut': 'It does not budge.',
+      'door.open': 'It swings open.',
+    },
+  });
+
+  game.on('lever', {
+    onInteract: async (ctx) =&gt; {
+      const unlocked = !game.flag('unlocked');
+      game.flag('unlocked', unlocked);
+      await ctx.say(unlocked ? 'lever.pulled' : 'lever.back');
+    },
+  });
+
+  game.on('door', {
+    onInteract: (ctx) =&gt; ctx.say(game.flag('unlocked') ? 'door.open' : 'door.shut'),
+  });
+
+  await game.start();
+}
+
+function draw() {
+  game.draw();
+}</textarea>
+    </div>
+    <div class="stage"><iframe title="Result" sandbox="allow-scripts allow-same-origin"></iframe><pre class="error" hidden></pre></div>
+  </div>
+  <p class="pager"><a href="?page=1" data-page="1">← Previous</a><a href="?page=3" data-page="3">Next →</a></p>
+</section><section class="lesson" data-page="3" hidden>
+  <h1>Pick things up</h1>
+  <div class="prose"><p>Items live in the <strong>inventory bar</strong> at the bottom of the screen. Declare them in <code>items</code> (an id and the name the player sees), then <code>game.give(&#39;key&#39;)</code> puts one in the bar. <code>game.has(&#39;key&#39;)</code> asks whether it is carried, and <code>game.take(&#39;key&#39;)</code> removes it.</p>
+<p>To use an item, click it in the bar (it is now held), then click the thing to use it on. That runs the target&#39;s <code>onUse</code>, with the held item in <code>ctx.item</code>. Returning <code>false</code> means &quot;that does not work&quot;, and the hero says the default &quot;I can&#39;t use that&quot;.</p>
+</div>
+  <p class="covers"><code>Game.give</code> <code>Game.has</code> <code>Game.take</code></p>
+  <div class="workbench">
+    <div class="editor">
+      <div class="bar"><span>sketch.js</span><span><button type="button" class="run">Run ▶</button><button type="button" class="reset">Reset</button></span></div>
+      <textarea class="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Sketch code">let game;
+
+async function setup() {
+  game = createGame({
+    items: { key: 'brass key' },
+    rooms: [{
+      id: 'yard', width: 640, height: 360, color: '#2d3a55',
+      starts: { default: { x: 80, y: 300 } },
+      walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]], color: '#3c4659' }],
+      hotspots: [
+        { id: 'keyspot', name: 'obj.key', provider: 'polygon', color: '#e0c050',
+          points: [[200, 275], [240, 275], [240, 295], [200, 295]], walkTo: { x: 220, y: 310 } },
+        { id: 'door', name: 'obj.door', provider: 'polygon', color: '#6b4a2f',
+          points: [[500, 120], [580, 120], [580, 250], [500, 250]], walkTo: { x: 540, y: 290, dir: 'up' } },
+      ],
+    }],
+    strings: {
+      'obj.key': 'Brass key', 'obj.door': 'Door',
+      'key.got': 'A brass key. Might come in handy.',
+      'door.locked': 'Locked.',
+      'door.hint': 'I have a key. Maybe use it on the door?',
+      'door.opens': 'The key turns. The door opens.',
+    },
+  });
+
+  game.on('keyspot', {
+    onInteract: async (ctx) =&gt; {
+      game.give('key');
+      ctx.setEnabled('keyspot', false); // it is in your pocket now
+      await ctx.say('key.got');
+    },
+  });
+
+  game.on('door', {
+    onInteract: (ctx) =&gt; ctx.say(game.has('key') ? 'door.hint' : 'door.locked'),
+    onUse: async (ctx) =&gt; {
+      if (ctx.item !== 'key') return false;
+      game.take('key');
+      game.flag('doorOpen', true);
+      await ctx.say('door.opens');
+    },
+  });
+
+  await game.start();
+}
+
+function draw() {
+  game.draw();
+}</textarea>
+    </div>
+    <div class="stage"><iframe title="Result" sandbox="allow-scripts allow-same-origin"></iframe><pre class="error" hidden></pre></div>
+  </div>
+  <p class="pager"><a href="?page=2" data-page="2">← Previous</a><a href="?page=4" data-page="4">Next →</a></p>
+</section><section class="lesson" data-page="4" hidden>
+  <h1>Go to another room</h1>
+  <div class="prose"><p>A game is usually several rooms. List them in <code>rooms</code>, or add one later with <code>game.addRoom</code>. <code>game.goTo(&#39;hall&#39;)</code> fades to another room, and a room can have several named <code>starts</code>, so the hero appears at the right door: <code>game.goTo(&#39;hall&#39;, &#39;fromYard&#39;)</code>.</p>
+<p>Rooms remember how you left them. <code>game.room</code> is the room you are in right now.</p>
+</div>
+  <p class="covers"><code>Game.goTo</code> <code>Game.addRoom</code> <code>Game.room</code></p>
+  <div class="workbench">
+    <div class="editor">
+      <div class="bar"><span>sketch.js</span><span><button type="button" class="run">Run ▶</button><button type="button" class="reset">Reset</button></span></div>
+      <textarea class="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Sketch code">let game;
+
+const yard = {
+  id: 'yard', width: 640, height: 360, color: '#2d3a55',
+  starts: { default: { x: 80, y: 300 }, fromHall: { x: 520, y: 300 } },
+  walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]], color: '#3c4659' }],
+  hotspots: [{
+    id: 'toHall', name: 'obj.toHall', provider: 'polygon', color: '#6b4a2f',
+    points: [[540, 120], [610, 120], [610, 250], [540, 250]], walkTo: { x: 575, y: 285, dir: 'up' },
+  }],
+};
+
+const hall = {
+  id: 'hall', width: 640, height: 360, color: '#4a3550',
+  starts: { default: { x: 80, y: 300 }, fromYard: { x: 100, y: 300 } },
+  walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]], color: '#5d4563' }],
+  hotspots: [{
+    id: 'toYard', name: 'obj.toYard', provider: 'polygon', color: '#6b4a2f',
+    points: [[30, 120], [100, 120], [100, 250], [30, 250]], walkTo: { x: 65, y: 285, dir: 'up' },
+  }],
+};
+
+async function setup() {
+  game = createGame({
+    rooms: [yard],
+    strings: { 'obj.toHall': 'To the hall', 'obj.toYard': 'To the yard' },
+  });
+  game.addRoom(hall);
+
+  game.on('toHall', { onInteract: () =&gt; game.goTo('hall', 'fromYard') });
+  game.on('toYard', { onInteract: () =&gt; game.goTo('yard', 'fromHall') });
+
+  await game.start();
+}
+
+function draw() {
+  game.draw();
+  fill(255);
+  textSize(14);
+  text('You are in: ' + game.room.id, 10, 22);
+}</textarea>
+    </div>
+    <div class="stage"><iframe title="Result" sandbox="allow-scripts allow-same-origin"></iframe><pre class="error" hidden></pre></div>
+  </div>
+  <p class="pager"><a href="?page=3" data-page="3">← Previous</a><a href="?page=5" data-page="5">Next →</a></p>
+</section><section class="lesson" data-page="5" hidden>
+  <h1>Cutscenes</h1>
+  <div class="prose"><p>A <strong>cutscene</strong> is a scripted moment: the player cannot click, and a Skip button appears. Inside it you write the story as ordinary code, and every step waits for the one before: <code>await game.hero.walkTo(...)</code>, <code>await game.say(...)</code>.</p>
+<p>If the player skips, the hero jumps to where they would have ended up and the lines are not shown, but everything your script does to the game still happens. Press the Skip button (or Escape) to try it.</p>
+</div>
+  <p class="covers"><code>Game.cutscene</code></p>
+  <div class="workbench">
+    <div class="editor">
+      <div class="bar"><span>sketch.js</span><span><button type="button" class="run">Run ▶</button><button type="button" class="reset">Reset</button></span></div>
+      <textarea class="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Sketch code">let game;
+
+async function setup() {
+  game = createGame({
+    rooms: [{
+      id: 'yard', width: 640, height: 360, color: '#2d3a55',
+      starts: { default: { x: 40, y: 300 } },
+      walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]], color: '#3c4659' }],
+    }],
+    strings: {
+      'intro.one': 'What a strange place.',
+      'intro.two': 'Let me look around.',
+    },
+  });
+
+  await game.start();
+
+  await game.cutscene(async () =&gt; {
+    await game.say('intro.one');
+    await game.hero.walkTo({ x: 420, y: 300 });
+    await game.say('intro.two');
+    game.flag('seenIntro', true);
+  });
+}
+
+function draw() {
+  game.draw();
+}</textarea>
+    </div>
+    <div class="stage"><iframe title="Result" sandbox="allow-scripts allow-same-origin"></iframe><pre class="error" hidden></pre></div>
+  </div>
+  <p class="pager"><a href="?page=4" data-page="4">← Previous</a><a href="?page=6" data-page="6">Next →</a></p>
+</section><section class="lesson" data-page="6" hidden>
+  <h1>Conversations</h1>
+  <div class="prose"><p><code>game.talk</code> plays a conversation. The easiest format is the library&#39;s own small Markdown: a <code># section</code> is a place to jump to (the first one is where it starts), <code>Speaker: text</code> is a line, <code>* choice -&gt; section</code> is a choice for the player, and <code>-&gt; END</code> finishes. Click the guard.</p>
+<p>The same call also plays Twine and Ink conversations; it detects the format.</p>
+</div>
+  <p class="covers"><code>Game.talk</code></p>
+  <div class="workbench">
+    <div class="editor">
+      <div class="bar"><span>sketch.js</span><span><button type="button" class="run">Run ▶</button><button type="button" class="reset">Reset</button></span></div>
+      <textarea class="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Sketch code">let game;
+
+const talk = `
+# start
+Guard: Halt! Who goes there?
+* Just a traveller. -&gt; traveller
+* None of your business. -&gt; rude
+
+# traveller
+Guard: Then welcome, traveller.
+-&gt; END
+
+# rude
+Guard: Hmph. Mind your manners.
+-&gt; END
+`;
+
+async function setup() {
+  game = createGame({
+    rooms: [{
+      id: 'yard', width: 640, height: 360, color: '#2d3a55',
+      starts: { default: { x: 80, y: 300 } },
+      walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]], color: '#3c4659' }],
+      hotspots: [{
+        id: 'guard', name: 'obj.guard', provider: 'polygon', color: '#4f7cac',
+        points: [[400, 150], [450, 150], [450, 250], [400, 250]], walkTo: { x: 360, y: 290, dir: 'right' },
+      }],
+    }],
+    strings: { 'obj.guard': 'Guard' },
+  });
+
+  game.on('guard', { onInteract: () =&gt; game.talk(talk) });
+
+  await game.start();
+}
+
+function draw() {
+  game.draw();
+}</textarea>
+    </div>
+    <div class="stage"><iframe title="Result" sandbox="allow-scripts allow-same-origin"></iframe><pre class="error" hidden></pre></div>
+  </div>
+  <p class="pager"><a href="?page=5" data-page="5">← Previous</a><a href="?page=7" data-page="7">Next →</a></p>
+</section><section class="lesson" data-page="7" hidden>
+  <h1>Save and load</h1>
+  <div class="prose"><p><code>game.save()</code> stores the game: the flags, the inventory, the room and where the hero stands. <code>game.load()</code> brings it back, and resolves to <code>false</code> if nothing was saved.</p>
+<p>Pick up the key, walk somewhere, and press <strong>S</strong>. Then pick up nothing more, walk away and press <strong>L</strong>: the hero is back where you saved. (Click the picture once first, so it gets your key presses.)</p>
+</div>
+  <p class="covers"><code>Game.save</code> <code>Game.load</code></p>
+  <div class="workbench">
+    <div class="editor">
+      <div class="bar"><span>sketch.js</span><span><button type="button" class="run">Run ▶</button><button type="button" class="reset">Reset</button></span></div>
+      <textarea class="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Sketch code">let game;
+
+async function setup() {
+  game = createGame({
+    items: { key: 'brass key' },
+    saveSlot: 'lesson',
+    rooms: [{
+      id: 'yard', width: 640, height: 360, color: '#2d3a55',
+      starts: { default: { x: 80, y: 300 } },
+      walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]], color: '#3c4659' }],
+      hotspots: [{
+        id: 'keyspot', name: 'obj.key', provider: 'polygon', color: '#e0c050',
+        points: [[300, 275], [340, 275], [340, 295], [300, 295]], walkTo: { x: 320, y: 310 },
+      }],
+    }],
+    strings: { 'obj.key': 'Brass key', 'key.got': 'Got it.' },
+  });
+
+  game.on('keyspot', {
+    onInteract: async (ctx) =&gt; {
+      game.give('key');
+      ctx.setEnabled('keyspot', false);
+      await ctx.say('key.got');
+    },
+  });
+
+  await game.start();
+}
+
+function draw() {
+  game.draw();
+  fill(255);
+  textSize(14);
+  text('S saves, L loads', 10, 22);
+}
+
+function keyPressed() {
+  if (key === 's') game.save();
+  if (key === 'l') game.load();
+}</textarea>
+    </div>
+    <div class="stage"><iframe title="Result" sandbox="allow-scripts allow-same-origin"></iframe><pre class="error" hidden></pre></div>
+  </div>
+  <p class="pager"><a href="?page=6" data-page="6">← Previous</a><a href="?page=8" data-page="8">Next →</a></p>
+</section><section class="lesson" data-page="8" hidden>
+  <h1>Hide and show</h1>
+  <div class="prose"><p><code>game.hotspot(&#39;crate&#39;)</code> gives you the live hotspot of the current room. Set its <code>enabled</code> to <code>false</code> and it cannot be clicked any more, and the default drawing stops drawing it. Pull the lever and the crate vanishes.</p>
+</div>
+  <p class="covers"><code>Game.hotspot</code></p>
+  <div class="workbench">
+    <div class="editor">
+      <div class="bar"><span>sketch.js</span><span><button type="button" class="run">Run ▶</button><button type="button" class="reset">Reset</button></span></div>
+      <textarea class="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Sketch code">let game;
+
+async function setup() {
+  game = createGame({
+    rooms: [{
+      id: 'yard', width: 640, height: 360, color: '#2d3a55',
+      starts: { default: { x: 80, y: 300 } },
+      walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]], color: '#3c4659' }],
+      hotspots: [
+        { id: 'lever', name: 'obj.lever', provider: 'polygon', color: '#c9a227',
+          points: [[200, 200], [230, 200], [230, 250], [200, 250]], walkTo: { x: 215, y: 290, dir: 'up' } },
+        { id: 'crate', name: 'obj.crate', provider: 'polygon', color: '#96643c',
+          points: [[400, 200], [470, 200], [470, 260], [400, 260]], walkTo: { x: 435, y: 300, dir: 'up' } },
+      ],
+    }],
+    strings: { 'obj.lever': 'Lever', 'obj.crate': 'Crate', 'lever.pulled': 'The crate is gone.' },
+  });
+
+  game.on('lever', {
+    onInteract: async (ctx) =&gt; {
+      game.hotspot('crate').enabled = false;
+      await ctx.say('lever.pulled');
+    },
+  });
+
+  await game.start();
+}
+
+function draw() {
+  game.draw();
+}</textarea>
+    </div>
+    <div class="stage"><iframe title="Result" sandbox="allow-scripts allow-same-origin"></iframe><pre class="error" hidden></pre></div>
+  </div>
+  <p class="pager"><a href="?page=7" data-page="7">← Previous</a><a href="?page=9" data-page="9">Next →</a></p>
+</section><section class="lesson" data-page="9" hidden>
+  <h1>See the shapes</h1>
+  <div class="prose"><p>When a click does not do what you expect, look at the shapes. Set <code>game.debug</code> to <code>true</code> (or press <strong>D</strong> while playing) and the game outlines every hotspot and every walkable area, and marks the one under the pointer.</p>
+<p>Press <strong>D</strong> in the picture to switch it off again. The key can be changed or turned off with the <code>debugKey</code> option.</p>
+</div>
+  <p class="covers"><code>Game.debug</code></p>
+  <div class="workbench">
+    <div class="editor">
+      <div class="bar"><span>sketch.js</span><span><button type="button" class="run">Run ▶</button><button type="button" class="reset">Reset</button></span></div>
+      <textarea class="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Sketch code">let game;
+
+async function setup() {
+  game = createGame({
+    rooms: [{
+      id: 'yard', width: 640, height: 360, color: '#2d3a55',
+      starts: { default: { x: 80, y: 300 } },
+      walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]] }],
+      obstacles: [{ id: 'pond', points: [[250, 280], [380, 280], [380, 325], [250, 325]] }],
+      hotspots: [{
+        id: 'sign', name: 'obj.sign', provider: 'polygon',
+        points: [[500, 170], [580, 170], [580, 250], [500, 250]],
+      }],
+    }],
+    strings: { 'obj.sign': 'Sign' },
+  });
+
+  game.debug = true;
+
+  await game.start();
+}
+
+function draw() {
+  game.draw();
+}</textarea>
+    </div>
+    <div class="stage"><iframe title="Result" sandbox="allow-scripts allow-same-origin"></iframe><pre class="error" hidden></pre></div>
+  </div>
+  <p class="pager"><a href="?page=8" data-page="8">← Previous</a><a href="?page=10" data-page="10">Next →</a></p>
+</section><section class="lesson" data-page="10" hidden>
+  <h1>Draw it yourself</h1>
+  <div class="prose"><p>Until you have art, the game draws coloured shapes. When you do, replace the parts you want. <code>game.drawRoom</code>, <code>game.drawHero</code> and <code>game.drawSpeech</code> each get the p5 sketch <code>p</code> and draw in room coordinates, with the hero&#39;s feet at <code>(hero.x, hero.y)</code>.</p>
+<p>To add a thing that must pass in front of or behind the hero, push <code>{ baseline, draw }</code> to <code>game.actors</code>. The <code>baseline</code> is the y of its feet: the larger it is, the closer it is, and the later it is drawn. Walk behind the tree, then in front of it.</p>
+</div>
+  <p class="covers"><code>Game.drawRoom</code> <code>Game.drawHero</code> <code>Game.drawSpeech</code> <code>Game.actors</code></p>
+  <div class="workbench">
+    <div class="editor">
+      <div class="bar"><span>sketch.js</span><span><button type="button" class="run">Run ▶</button><button type="button" class="reset">Reset</button></span></div>
+      <textarea class="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Sketch code">let game;
+
+async function setup() {
+  game = createGame({
+    rooms: [{
+      id: 'yard', width: 640, height: 360, color: '#2d3a55',
+      starts: { default: { x: 80, y: 300 } },
+      walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]], color: '#3c4659' }],
+    }],
+    strings: { 'hero.hello': 'Nice tree.' },
+  });
+
+  // the hero: a blue ball with feet on the ground
+  game.drawHero = (p, hero) =&gt; {
+    p.noStroke();
+    p.fill('#5b9bd5');
+    p.circle(hero.x, hero.y - 24 * hero.scale, 48 * hero.scale);
+  };
+
+  // the words above the hero's head
+  game.drawSpeech = (p, hero) =&gt; {
+    p.fill(255, 240, 160);
+    p.textSize(18);
+    p.textAlign(p.CENTER, p.BOTTOM);
+    p.text(hero.speech.text, hero.x, hero.y - 70);
+  };
+
+  // a tree the hero can walk in front of and behind
+  game.actors.push({
+    baseline: 290,
+    draw: (p) =&gt; {
+      p.noStroke();
+      p.fill('#5a3d28');
+      p.rect(300, 200, 20, 90);
+      p.fill('#3f8f4f');
+      p.circle(310, 180, 110);
+    },
+  });
+
+  await game.start();
+  game.say('hero.hello');
+}
+
+function draw() {
+  game.draw();
+}</textarea>
+    </div>
+    <div class="stage"><iframe title="Result" sandbox="allow-scripts allow-same-origin"></iframe><pre class="error" hidden></pre></div>
+  </div>
+  <p class="pager"><a href="?page=9" data-page="9">← Previous</a><a href="?page=11" data-page="11">Next →</a></p>
+</section><section class="lesson" data-page="11" hidden>
+  <h1>The parts inside</h1>
+  <div class="prose"><p><code>createGame</code> builds many parts and lets you reach each one: <code>game.hero</code> walks and talks, <code>game.events</code> tells you when things happen, <code>game.state</code> is the saved memory, and <code>game.scheduler</code> runs timers. Here the hero walks off by itself after two seconds, an event reports every item picked up, and the game&#39;s memory is shown on screen.</p>
+<p><code>game.start()</code> loads everything for you. Call <code>game.preload()</code> yourself first when you want to load while something else is on screen.</p>
+</div>
+  <p class="covers"><code>Game.hero</code> <code>Game.events</code> <code>Game.state</code> <code>Game.scheduler</code> <code>Game.preload</code></p>
+  <div class="workbench">
+    <div class="editor">
+      <div class="bar"><span>sketch.js</span><span><button type="button" class="run">Run ▶</button><button type="button" class="reset">Reset</button></span></div>
+      <textarea class="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Sketch code">let game;
+let log = 'nothing yet';
+
+async function setup() {
+  game = createGame({
+    items: { coin: 'gold coin' },
+    rooms: [{
+      id: 'yard', width: 640, height: 360, color: '#2d3a55',
+      starts: { default: { x: 80, y: 300 } },
+      walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]], color: '#3c4659' }],
+      hotspots: [{
+        id: 'coin', name: 'obj.coin', provider: 'polygon', color: '#e0c050',
+        points: [[300, 275], [330, 275], [330, 295], [300, 295]], walkTo: { x: 315, y: 310 },
+      }],
+    }],
+    strings: { 'obj.coin': 'Gold coin' },
+  });
+
+  await game.preload();
+
+  game.on('coin', { onInteract: (ctx) =&gt; { game.give('coin'); ctx.setEnabled('coin', false); } });
+  game.events.on('inventory:add', ({ id }) =&gt; { log = 'picked up: ' + id; });
+
+  await game.start();
+
+  game.scheduler.after(2000, () =&gt; game.hero.walkTo({ x: 520, y: 300 }));
+}
+
+function draw() {
+  game.draw();
+  fill(255);
+  textSize(14);
+  text(log + '  |  inventory: ' + JSON.stringify(game.state.get('inventory')), 10, 22);
+}</textarea>
+    </div>
+    <div class="stage"><iframe title="Result" sandbox="allow-scripts allow-same-origin"></iframe><pre class="error" hidden></pre></div>
+  </div>
+  <p class="pager"><a href="?page=10" data-page="10">← Previous</a><span></span></p>
+</section></div></div></main>
+<script src="../assets/theme.js"></script>
+<script src="../assets/learn.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "items": {
+    "oil-can": { "name": "item.oil-can" },
+    "matches": { "name": "item.matches" }
+  },
+  "recipes": []
+}

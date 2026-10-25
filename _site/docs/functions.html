@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Functions · p5.clickery docs</title>
+
+<script>try{var t=localStorage.getItem('clickery-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="stylesheet" href="../assets/site.css">
+
+</head>
+<body class="section-docs">
+<header class="top">
+  <a class="brand" href="../">p5.clickery</a>
+  <nav><a href="../learn/">Learn</a><a href="../docs/" class="active" aria-current="page">Docs</a><a href="../examples/">Examples</a><a href="../tools/editor/">Editor</a><a href="https://github.com/flooowlab/p5.clickery">GitHub</a></nav>
+  <button class="theme" type="button" id="theme" aria-label="Switch between light and dark">◐</button>
+</header>
+<div class="docs"><aside class="side"><ul>
+  <li class="group">Start here</li>
+  <li><a href="../docs/functions.html" class="active">Functions</a><ul><li><a href="#createGame">createGame</a></li><li><a href="#createGameCanvas">createGameCanvas</a></li><li><a href="#registerClickery">registerClickery</a></li></ul></li>
+  <li><a href="../docs/types.html">Types</a></li>
+  <li class="group">Classes</li>
+  <li><a href="../docs/Game.html">Game</a></li>
+</ul></aside><main class="doc"><h1>Functions</h1><p>Functions you call directly, without an object.</p><section class="member" id="createGame">
+  <h3><a href="#createGame">createGame</a></h3>
+  <p class="sig"><code>createGame([options])</code></p>
+  <p>Creates a whole game with sensible defaults: its canvas (scaled to fit the window), mouse,
+touch and keyboard input, and drawing. A p5 function once p5.clickery is loaded, or
+<code>p.createGame</code> in instance mode.</p>
+
+  <table class="params"><thead><tr><th>Parameter</th><th>Type</th><th></th><th>Meaning</th></tr></thead><tbody><tr><td><code>options</code></td><td><code>GameOptions</code></td><td>optional</td><td>See <code>GameOptions</code>. Everything has a default.</td></tr></tbody></table><p class="returns"><b>Returns</b> <code>Game</code> The game. Call <code>game.start()</code> in <code>setup()</code> and <code>game.draw()</code> in <code>draw()</code>.</p>
+  <p class="label">Example</p><pre class="code"><code><span class="tok-k">let</span> game;
+
+<span class="tok-k">async</span> <span class="tok-k">function</span> setup() {
+  game = createGame({ rooms: [yard] });
+  <span class="tok-k">await</span> game.start();
+}
+
+<span class="tok-k">function</span> draw() {
+  game.draw();
+}</code></pre>
+</section><section class="member" id="createGameCanvas">
+  <h3><a href="#createGameCanvas">createGameCanvas</a></h3>
+  <p class="sig"><code>createGameCanvas(width, height)</code></p>
+  <p>A normal p5 canvas that also remembers its logical size. <a href="../docs/functions.html#createGame"><code>createGame</code></a> calls it for you;
+use it only when you build a game from the parts yourself.</p>
+
+  <table class="params"><thead><tr><th>Parameter</th><th>Type</th><th></th><th>Meaning</th></tr></thead><tbody><tr><td><code>width</code></td><td><code>number</code></td><td></td><td>Whole number of pixels.</td></tr><tr><td><code>height</code></td><td><code>number</code></td><td></td><td>Whole number of pixels.</td></tr></tbody></table><p class="returns"><b>Returns</b> <code>Object</code> The p5 renderer. Throws a <code>RangeError</code> for anything but positive whole numbers.</p>
+  
+</section><section class="member" id="registerClickery">
+  <h3><a href="#registerClickery">registerClickery</a></h3>
+  <p class="sig"><code>registerClickery(p5)</code></p>
+  <p>Registers p5.clickery with p5. The script tag does this by itself; with ES modules call it
+once, before <code>new p5(...)</code>.</p>
+
+  <table class="params"><thead><tr><th>Parameter</th><th>Type</th><th></th><th>Meaning</th></tr></thead><tbody><tr><td><code>p5</code></td><td><code>function</code></td><td></td><td>The p5 class.</td></tr></tbody></table>
+  <p class="label">Example</p><pre class="code"><code><span class="tok-k">import</span> { registerClickery } <span class="tok-k">from</span> <span class="tok-s">'./p5.clickery.esm.js'</span>;
+registerClickery(p5);</code></pre>
+</section></main></div>
+<script src="../assets/theme.js"></script>
+
+</body>
+</html>

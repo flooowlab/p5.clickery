@@ -1,0 +1,15 @@
+:: StoryTitle
+The Guard
+
+:: Start
+Guard: Halt! Who goes there?
+[[A friend.->friend]]
+[[Nobody.->nobody]]
+
+:: friend
+Guard: Pass, friend. If it is the key you are after...
+Guard: ...something long and thin would reach down that drain.
+<<set $metGuard to true>>
+
+:: nobody
+Guard: Then be off with you!
