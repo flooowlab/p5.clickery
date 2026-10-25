@@ -7,12 +7,20 @@ import { hoverLabel } from '../interact/label.js';
 import { drawHoverLabel } from '../ui/inventory-bar.js';
 import { hitSkipButton, drawSkipButton } from '../ui/skip-button.js';
 import { drawDebugOverlay } from '../debug/overlay.js';
+import { StateInspector } from '../debug/inspector.js';
 
-// Connects a Game to a p5 sketch: the canvas, fitting it to the page, mouse /
-// touch / keys, loading pictures, and game.draw(). createGame() does this for you.
-//
-// options: canvas (create the canvas, default true), parent (an element or its id to put
-// the canvas in), fit (scale to the page or the parent with letterbox bars, default true).
+/**
+ * Connects a game to a p5 sketch: the canvas, fitting it to the page, mouse, touch and keys, loading
+ * pictures, and `game.draw()`. {@link createGame} does this for you; call it to attach a game made with
+ * `new Game(options)` to a sketch later.
+ * @param {Game} game
+ * @param {Object} p The p5 sketch.
+ * @param {Object} [options]
+ * @param {boolean} [options.canvas=true] Create the canvas. `false` uses one you made.
+ * @param {HTMLElement|string} [options.parent] An element, or its id, to put the canvas in.
+ * @param {boolean} [options.fit=true] Scale to the page or the parent with letterbox bars.
+ * @returns {Game} The same game.
+ */
 export function attachP5(game, p, { canvas = true, parent = null, fit = true } = {}) {
   const { width, height } = game.options;
   game.p = p;
@@ -92,7 +100,7 @@ function prepareContainer(el, width, height) {
 }
 
 function bindInput(game, el) {
-  const { width, height, debugKey } = game.options;
+  const { width, height, debugKey, inspectorKey } = game.options;
   const { pointer, menu, subtitles, dialogue, cutscenes, scene } = game;
   const at = (e) => (game.scaler ? game.scaler.toLogical(e.clientX, e.clientY)
     : clientToLogical(e.clientX, e.clientY, el.getBoundingClientRect(), width, height));
@@ -125,6 +133,10 @@ function bindInput(game, el) {
     if (e.key === 'Escape') { cutscenes.skip(); subtitles.skip(); }
     else if (/^[1-9]$/.test(e.key) && menu.open) menu.pick(Number(e.key) - 1);
     else if (debugKey && e.key.toLowerCase() === debugKey.toLowerCase()) game.debug = !game.debug;
+    else if (inspectorKey && e.key.toLowerCase() === inspectorKey.toLowerCase()) {
+      game.inspector ??= new StateInspector(game, { document: el.ownerDocument });
+      game.inspector.toggle();
+    }
   });
 }
 
@@ -182,9 +194,14 @@ function drawGame(game, p) {
   p.pop();
 }
 
-// Default room drawing: walkable areas, obstacles and hotspots that have a "color" in the
-// room file are filled with it (handy before there is any art). Switched-off hotspots
-// are not drawn.
+/**
+ * The default room drawing: every walkable area, obstacle and enabled hotspot that has a `color` is
+ * filled with it, which is handy before there is any art. Switched-off hotspots are not drawn. Replace
+ * `game.drawRoom` to draw your own, and call this inside it to keep the shapes.
+ * @param {Object} p The p5 sketch.
+ * @param {Room} room
+ * @param {Game} game
+ */
 export function drawRoomShapes(p, room, game) {
   p.noStroke();
   const shapes = [...room.walkable, ...room.obstacles, ...room.hotspots.filter((h) => game.hotspot(h.id)?.enabled !== false)];
@@ -197,7 +214,12 @@ export function drawRoomShapes(p, room, game) {
   }
 }
 
-// Default hero: its animation if it has one, otherwise a simple figure. Feet at (x, y).
+/**
+ * The default hero: its animation if it has one, otherwise a simple figure. Feet at `(hero.x, hero.y)`.
+ * Replace `game.drawHero` to draw your own.
+ * @param {Object} p The p5 sketch.
+ * @param {Actor} hero
+ */
 export function drawHeroDefault(p, hero) {
   if (drawAnimation(p, hero.anim, hero.x, hero.y, hero.scale)) return;
   const s = hero.scale;
@@ -209,7 +231,12 @@ export function drawHeroDefault(p, hero) {
   p.rect(hero.x + eye * s, hero.y - 62 * s, 6 * s, 6 * s);
 }
 
-// Default speech: the line above the hero's head, kept on screen.
+/**
+ * The default speech: the line above the hero's head, kept on screen. Replace `game.drawSpeech` to draw your own.
+ * @param {Object} p The p5 sketch.
+ * @param {Actor} hero
+ * @param {Game} game
+ */
 export function drawSpeechDefault(p, hero, game) {
   const { width } = game.options;
   const cam = game.scene.camera;

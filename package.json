@@ -37,6 +37,11 @@
     "!examples/assets",
     "tools/editor",
     "tools/compile-ink.mjs",
+    "tools/lib",
+    "tools/find-keys.mjs",
+    "tools/check-rooms.mjs",
+    "tools/animation",
+    "tools/dialogue",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"

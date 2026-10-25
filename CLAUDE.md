@@ -49,15 +49,16 @@ dist/       built files to distribute (p5.clickery.min.js, .js, .esm.js); genera
 src/        the library (src/index.js exports everything; src/global.js is the script-tag entry)
 examples/   runnable pages, one folder each, learning order: quickstart, core, rooms, adventure, lighthouse
             examples/index.html lists them; examples/assets/ holds assets shared between examples
-tools/      editor/ (room editor page) and Node scripts: build.mjs, build-site.mjs (+ site/ helpers), compile-ink.mjs, make-example-audio.mjs, make-sample-room.mjs
-site/       the website's own files: learn/*.md (lessons) and assets/ (css, js); the Docs pages come from JSDoc in src/
+tools/      editor/ (room editor page), dialogue/ and animation/ (previewer pages), lib/ (logic shared by the scripts), and Node scripts: build.mjs, build-site.mjs (+ site/ helpers), check-rooms.mjs, find-keys.mjs, compile-ink.mjs, make-example-audio.mjs, make-sample-room.mjs
+site/       the website's own files: learn/*.md (lessons), tools/*.md (one per tool), assets/ (css, js); the Docs pages come from JSDoc in src/
 docs/       reference.md (formats: room, hotspot, items, scripts, dialogue, state, events, saves)
 test/       unit/ (one file per src/ folder), tools/, integration/ (Lighthouse playthrough), release/, site/, fixtures/
 ```
 
-**The website** (GitHub Pages, built by `.github/workflows/pages.yml`, locally `npm run build:site` into `_site/`) has two sections, like p5play's:
+**The website** (GitHub Pages, built by `.github/workflows/pages.yml`, locally `npm run build:site` into `_site/`) has three sections; Learn and Docs follow p5play's:
 - **Docs** is function-centred and generated from the JSDoc comments in `src/` (`/** */` with `@param`, `@returns`, `@example`). Write the comment with the code. `@typedef` documents option objects. A tag must start its own line; `{@link Name}` links to another entry.
 - **Learn** is example-centred: `site/learn/NN-topic.md` is a topic, split into pages by `<!-- page: Title -->`. Each page names what it teaches in `<!-- covers: Game#say, ... -->` and has one ```js sketch that runs live next to its code. Names in `covers` must exist in the JSDoc, or the build fails.
+- **Tools**: `site/tools/NN-name.md`, front matter `title`, `status` (`available` or `planned`), `summary`, and optionally `open` (a path to a page to launch, such as `tools/editor/`). A new tool in `tools/` gets a page here; a planned one is labelled as not built. Keep a tool's logic in a small pure module (`tools/lib/`, or next to its page) with tests in `test/tools/`, and the page or CLI thin. Pages that import from `../../src/` need `src/` published: `tools/build-site.mjs` copies it, and a test checks that everything the pages load is copied.
 - `test/site/site.test.js` runs every sketch headlessly and keeps `test/site/undocumented.txt` (exports with no JSDoc yet) shrinking: document an export, then delete its line.
 
 New runnable pages go in their own `examples/<name>/` folder and get a card in `examples/index.html`. Pages load p5 and

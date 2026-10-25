@@ -1,9 +1,6 @@
 // Player settings: text speed, subtitles on/off and audio volumes. They belong
 // to the player, not to a save game, so they live in their own storage key and
 // are not part of the state store.
-//
-//   settings.set('musicVolume', 0.4);        // clamped to its range, saved, listeners told
-//   settings.onChange((name, value) => ...);
 const RANGES = {
   textSpeed: [0.25, 4],
   masterVolume: [0, 1],
@@ -20,6 +17,21 @@ const DEFAULTS = {
   voiceVolume: 1,
 };
 
+/**
+ * The player's settings: `textSpeed` (0.25 to 4), `subtitles` (on or off) and the volumes
+ * `masterVolume`, `musicVolume`, `sfxVolume` and `voiceVolume` (0 to 1). They belong to the
+ * player, not to a saved game, so they are kept under their own storage key. A game has one:
+ * `game.settings`.
+ *
+ * @example
+ * game.settings.set('musicVolume', 0.4);   // clamped to its range, saved, listeners told
+ * game.settings.onChange((name, value) => console.log(name, value));
+ *
+ * @param {Object} [options]
+ * @param {Storage} [options.storage] Default: `localStorage`.
+ * @param {string} [options.key='p5.clickery:settings'] The storage key.
+ * @param {Object} [options.defaults] Overrides for the default values.
+ */
 export class Settings {
   #values;
   #listeners = new Set();
@@ -31,15 +43,31 @@ export class Settings {
     this.#values = { ...this.defaults };
   }
 
+  /**
+   * A copy of all the settings.
+   * @type {Object}
+   */
   get all() {
     return { ...this.#values };
   }
 
+  /**
+   * Reads a setting.
+   * @param {string} name
+   * @returns {number|boolean}
+   * @throws {Error} For an unknown name.
+   */
   get(name) {
     this.#check(name);
     return this.#values[name];
   }
 
+  /**
+   * Changes a setting. A number is kept within its range. The change is saved and listeners are told.
+   * @param {string} name
+   * @param {number|boolean} value
+   * @returns {number|boolean} The value that was kept.
+   */
   set(name, value) {
     this.#check(name);
     const next = this.#clean(name, value);
@@ -50,17 +78,27 @@ export class Settings {
     return next;
   }
 
-  // Returns a function that stops listening.
+  /**
+   * Listens for changes.
+   * @param {function(string, *, Object): void} fn Called with the name, the new value and all the settings.
+   * @returns {function(): void} A function that stops listening.
+   */
   onChange(fn) {
     this.#listeners.add(fn);
     return () => this.#listeners.delete(fn);
   }
 
+  /**
+   * Puts every setting back to its default.
+   */
   reset() {
     for (const [name, value] of Object.entries(this.defaults)) this.set(name, value);
   }
 
-  // Reads saved settings; unknown or invalid entries are ignored. Returns false when nothing was saved.
+  /**
+   * Reads the saved settings. Unknown or invalid entries are ignored.
+   * @returns {boolean} `false` when nothing was saved.
+   */
   load() {
     let saved;
     try {
@@ -77,6 +115,9 @@ export class Settings {
     return true;
   }
 
+  /**
+   * Writes the settings to storage. `set` does it for you; in a private window it quietly does nothing.
+   */
   save() {
     try {
       this.storage?.setItem(this.key, JSON.stringify(this.#values));
@@ -98,8 +139,15 @@ export class Settings {
   }
 }
 
-// Applies text speed and subtitle settings to a SubtitleBar and any actors,
-// now and whenever they change. Returns a function that stops it.
+/**
+ * Applies the text speed and subtitle settings to a subtitle bar and to actors, now and whenever
+ * they change. A game does this for its hero and subtitles.
+ * @param {Settings} settings
+ * @param {Object} [targets]
+ * @param {SubtitleBar} [targets.subtitles]
+ * @param {Actor[]} [targets.actors]
+ * @returns {function(): void} A function that stops it.
+ */
 export function bindTextSettings(settings, { subtitles = null, actors = [] } = {}) {
   const apply = () => {
     if (subtitles) {

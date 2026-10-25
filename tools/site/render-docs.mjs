@@ -1,12 +1,12 @@
 // The Docs section: one page per class, one for the functions and one for the types, all from JSDoc.
 import { page } from './layout.mjs';
-import { anchor, signature, typeText } from './jsdoc.mjs';
+import { anchor, byArea, signature, typeText } from './jsdoc.mjs';
 import { codeBlock, escapeHtml, renderMarkdown } from './markdown.mjs';
 
-const PAGES = { functions: 'docs/functions.html', types: 'docs/types.html' };
+const PAGES = { functions: 'docs/functions.html', types: 'docs/types.html', constants: 'docs/constants.html' };
 
 // Where each documented name lives, relative to the site root.
-export function docsLinks({ classes, functions, types }) {
+export function docsLinks({ classes, functions, types, constants }) {
   const links = new Map();
   for (const { doc, members } of classes) {
     links.set(doc.longname, `docs/${doc.name}.html`);
@@ -14,6 +14,7 @@ export function docsLinks({ classes, functions, types }) {
   }
   for (const f of functions) links.set(f.longname, `${PAGES.functions}#${anchor(f.longname)}`);
   for (const t of types) links.set(t.longname, `${PAGES.types}#${anchor(t.longname)}`);
+  for (const c of constants) links.set(c.longname, `${PAGES.constants}#${anchor(c.longname)}`);
   return links;
 }
 
@@ -54,8 +55,9 @@ function sidebar(model, current, root) {
   <li class="group">Start here</li>
   ${item(PAGES.functions, 'Functions', current === 'functions', model.functions)}
   ${item(PAGES.types, 'Types', current === 'types', model.types)}
-  <li class="group">Classes</li>
-  ${model.classes.map(({ doc, members }) => item(`docs/${doc.name}.html`, doc.name, current === doc.name, members)).join('')}
+  ${item(PAGES.constants, 'Constants', current === 'constants', model.constants)}
+  ${byArea(model.classes, (c) => c.doc).map(([area, list]) => `<li class="group">${escapeHtml(area)}</li>`
+    + list.map(({ doc, members }) => item(`docs/${doc.name}.html`, doc.name, current === doc.name, members)).join('')).join('')}
 </ul></aside>`;
 }
 
@@ -79,10 +81,14 @@ export function renderDocs(model) {
       + (doc.examples ?? []).map((e) => `<p class="label">Example</p>${codeBlock(e)}`).join('') + params(doc);
     files[`docs/${doc.name}.html`] = docsPage(model, doc.name, doc.name, intro, list('Properties', props) + list('Methods', methods), hrefOf);
   }
-  const section = (items) => items.map((d) => member(d, '', hrefOf)).join('');
-  files[PAGES.functions] = docsPage(model, 'functions', 'Functions', '<p>Functions you call directly, without an object.</p>', section(model.functions), hrefOf);
-  files[PAGES.types] = docsPage(model, 'types', 'Types', '<p>The shape of the objects you pass in.</p>', section(model.types), hrefOf);
-  const index = [...model.functions, ...model.classes.map((c) => c.doc), ...model.types].map((d) => `<li><a href="../${links.get(d.longname)}">${escapeHtml(d.name)}</a> ${escapeHtml((d.description ?? d.classdesc ?? '').split(/\n|\. /)[0].replace(/[`*]/g, ''))}</li>`).join('');
-  files['docs/index.html'] = docsPage(model, '', 'Documentation', `<p>Every function and property of the library, generated from the comments in its source. Looking for a guided tour with live examples instead? Try <a href="../learn/">Learn</a>.</p><ul class="toc">${index}</ul>`, '', hrefOf);
+  const section = (items) => byArea(items).map(([area, list]) => `<h2>${escapeHtml(area)}</h2>${list.map((d) => member(d, '', hrefOf)).join('')}`).join('');
+  files[PAGES.functions] = docsPage(model, 'functions', 'Functions', '<p>Functions you call directly, without an object, grouped by the part of the library they belong to.</p>', section(model.functions), hrefOf);
+  files[PAGES.types] = docsPage(model, 'types', 'Types', '<p>The shape of the objects you pass in and get back.</p>', section(model.types), hrefOf);
+  files[PAGES.constants] = docsPage(model, 'constants', 'Constants', '<p>Fixed values the library provides.</p>', section(model.constants), hrefOf);
+  const summary = (d) => escapeHtml((d.description ?? d.classdesc ?? '').split(/\n|\. /)[0].replace(/[`*]|\{@link ([^}]*)\}/g, '$1'));
+  const entry = (d) => `<li><a href="../${links.get(d.longname)}">${escapeHtml(d.name)}</a> <span class="muted">${summary(d)}</span></li>`;
+  const everything = [...model.functions, ...model.classes.map((c) => c.doc), ...model.types, ...model.constants];
+  const index = byArea(everything).map(([area, list]) => `<h2>${escapeHtml(area)}</h2><ul class="toc">${list.map(entry).join('')}</ul>`).join('');
+  files['docs/index.html'] = docsPage(model, '', 'Documentation', `<p>Every function, class and option of the library, generated from the comments in its source. Looking for a guided tour with live examples instead? Try <a href="../learn/">Learn</a>.</p>${index}`, '', hrefOf);
   return files;
 }

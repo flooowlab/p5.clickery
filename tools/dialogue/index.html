@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>p5.clickery dialogue previewer</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body { display: flex; flex-direction: column; background: #15171c; color: #dfe2ea; font: 14px/1.5 system-ui, sans-serif; }
+    header { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 8px 12px; background: #1f222b; border-bottom: 1px solid #333844; }
+    header h1 { font-size: 15px; margin: 0 8px 0 0; }
+    header label { display: flex; align-items: center; gap: 6px; color: #9aa1b2; }
+    button, select, input { font: inherit; color: inherit; background: #2b2f3a; border: 1px solid #434a5a; border-radius: 4px; padding: 4px 8px; }
+    button { cursor: pointer; } button:hover { background: #363c4b; }
+    main { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 0; }
+    textarea { width: 100%; height: 100%; resize: none; border: 0; border-right: 1px solid #333844; padding: 12px; background: #181b22; color: #dfe2ea; font: 13px/1.5 ui-monospace, Consolas, monospace; tab-size: 2; }
+    section { overflow: auto; padding: 12px 16px; }
+    h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #8f98ad; margin: 18px 0 6px; }
+    h2:first-child { margin-top: 0; }
+    #status { padding: 6px 10px; border-radius: 6px; background: #1f3a28; }
+    #status.error { background: #4a2328; color: #ffb4bd; white-space: pre-wrap; }
+    .line { margin: 4px 0; } .line b { color: #ffd678; } .line .tag { font-size: 11px; color: #7fd6a8; border: 1px solid #2f5a45; border-radius: 999px; padding: 0 6px; margin-left: 6px; }
+    .choice-said { margin: 4px 0; color: #8fb4ff; }
+    #options { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; align-items: flex-start; }
+    #options button { text-align: left; background: #25324f; border-color: #3b5bdb; }
+    .end { color: #8f98ad; font-style: italic; margin-top: 8px; }
+    table { border-collapse: collapse; } td, th { text-align: left; padding: 2px 14px 2px 0; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+    .warn { color: #ffd678; } .muted { color: #8f98ad; }
+    @media (max-width: 800px) { main { grid-template-columns: 1fr; grid-template-rows: 45% 55%; } textarea { border-right: 0; border-bottom: 1px solid #333844; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Dialogue previewer</h1>
+    <button id="open">Open file…</button>
+    <input id="file" type="file" accept=".md,.txt,.twee,.tw,.json" hidden>
+    <button id="sample-md">Markdown sample</button>
+    <button id="sample-twee">Twine sample</button>
+    <label>Start at <select id="start"></select></label>
+    <label>Variables <input id="vars" size="22" value="{}" spellcheck="false" title='Starting values as JSON, for example {"gold": 7}'></label>
+    <button id="restart">Restart</button>
+  </header>
+  <main>
+    <textarea id="source" spellcheck="false" aria-label="Conversation"></textarea>
+    <section>
+      <div id="status"></div>
+      <h2>Conversation</h2>
+      <div id="transcript"></div>
+      <div id="options"></div>
+      <div id="end" class="end" hidden>The conversation is over.</div>
+      <h2>Variables</h2>
+      <div id="variables"></div>
+      <h2>Checks</h2>
+      <div id="checks"></div>
+      <p class="muted">Plays Markdown, Twee 3 and Twison. For Ink, compile with tools/compile-ink.mjs and play it with game.talk.</p>
+    </section>
+  </main>
+  <script type="module" src="preview.js"></script>
+</body>
+</html>

@@ -2,16 +2,44 @@
 // a dump and restore. Paths are dot-separated: "flags.doorOpen", "rooms.cellar.lit".
 const initial = () => ({ flags: {}, vars: {}, inventory: [], rooms: {}, currentRoom: null });
 
+/**
+ * The game's memory: flags, variables, the inventory, per-room facts and the current room, all
+ * plain data, so saving and loading is a dump and a restore. A game has one: `game.state`.
+ *
+ * Paths are dot-separated: `'flags.doorOpen'`, `'rooms.cellar.lit'`. By convention `flags.*` holds
+ * yes/no facts, `vars.*` numbers and text, and `rooms.<id>.*` things about one room. The library
+ * itself uses `inventory`, `currentRoom` and `rooms.<id>.visited`.
+ *
+ * Values must be JSON data (numbers, text, true/false, arrays, objects); functions and `undefined`
+ * are rejected, so use `null` for "nothing". `get` returns a copy, so always change things with `set`.
+ *
+ * @example
+ * game.state.set('flags.doorOpen', true);
+ * game.state.get('flags.doorOpen');        // true
+ * game.state.get('flags.missing', false);  // false: the second argument is the fallback
+ * game.state.watch('flags.doorOpen', (now, before) => console.log(before, '->', now));
+ */
 export class StateStore {
   #data = initial();
   #watchers = new Map();
 
+  /**
+   * Reads a value.
+   * @param {string} [path] A dotted path. Without one, the whole state.
+   * @param {*} [fallback] Returned when nothing is stored at the path.
+   * @returns {*} A copy of the value.
+   */
   get(path, fallback) {
     if (path === undefined || path === '') return this.toJSON();
     const value = getIn(this.#data, path);
     return value === undefined ? fallback : clone(value);
   }
 
+  /**
+   * Stores a value, creating the path as needed, and tells whoever is watching it.
+   * @param {string} path A dotted path.
+   * @param {*} value JSON data. `undefined` is rejected: use `null`.
+   */
   set(path, value) {
     const keys = split(path);
     if (keys.length === 0) throw new Error('set() needs a path');
@@ -27,19 +55,31 @@ export class StateStore {
     this.#notify(before);
   }
 
-  // Calls fn(newValue, oldValue, path) when the value at `path` changes, including
-  // changes made to a parent or child path. Returns an unsubscribe function.
+  /**
+   * Calls a function whenever the value at a path changes, including changes made to a parent or
+   * child path.
+   * @param {string} path
+   * @param {function(*, *, string): void} fn Called with the new value, the old value and the path.
+   * @returns {function(): void} A function that stops watching.
+   */
   watch(path, fn) {
     if (!this.#watchers.has(path)) this.#watchers.set(path, new Set());
     this.#watchers.get(path).add(fn);
     return () => this.#watchers.get(path)?.delete(fn);
   }
 
+  /**
+   * A copy of the whole state, ready to be saved.
+   * @returns {Object}
+   */
   toJSON() {
     return clone(this.#data);
   }
 
-  // Replaces all state. Missing top-level keys get their defaults.
+  /**
+   * Replaces all of the state, for example with what was saved. Missing top-level keys get their defaults.
+   * @param {Object} json What {@link StateStore#toJSON} returned.
+   */
   fromJSON(json) {
     if (json === null || typeof json !== 'object' || Array.isArray(json)) {
       throw new TypeError('fromJSON needs an object');

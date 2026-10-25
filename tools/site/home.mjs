@@ -29,6 +29,7 @@ export function homePage() {
 <section class="choices">
   <a class="choice" href="learn/"><b>Learn</b><span>Short lessons with a live, editable game on every page. Start here if you are new.</span></a>
   <a class="choice" href="docs/"><b>Docs</b><span>Every function, property and option, with examples. Generated from the source.</span></a>
+  <a class="choice" href="tools/"><b>Tools</b><span>The room editor, and the other helpers for making a game.</span></a>
   <a class="choice" href="examples/"><b>Examples</b><span>Complete small games to play and read.</span></a>
 </section>
 <section class="home-more">

@@ -1,23 +1,48 @@
 // Shared pieces of the dialogue adapters.
-//
-// DialogueRunner interface (every adapter implements it):
-//   next()      -> { speaker, text, tags } for the next line, or null when the
-//                  runner is waiting for a choice or has finished
-//   choices()   -> [{ index, text }] while waiting for a choice, else []
-//   choose(i)   -> picks choice i; call next() again afterwards
-//   vars        -> read/write variables (shared with the state store when given)
-//   done        -> true once the conversation has ended
-// `tags` is an object such as { sfx: 'alarm' }; `speaker` is a string or null.
 
-// "Guard: Halt!" -> { speaker: "Guard", text: "Halt!" }. The colon needs a space
-// after it and the speaker is a short name; write a line with no speaker when
-// the text itself starts with something like "Note: ".
+/**
+ * A line of conversation, as a runner returns it.
+ *
+ * @typedef {Object} DialogueLine
+ * @property {string|null} speaker Who says it, or `null` for narration.
+ * @property {string} text What is said.
+ * @property {Object<string, (string|boolean)>} tags Extra information such as `{ sfx: 'alarm' }`. A tag with no value is `true`.
+ */
+
+/**
+ * What every dialogue adapter (Markdown, Twine, Ink) implements, so the game can play any of them
+ * the same way ({@link Game#talk} does). Run it by hand to build your own dialogue screen:
+ * call `next()` until it returns `null`, then either `choices()` to ask the player or stop if `done`.
+ *
+ * @typedef {Object} DialogueRunner
+ * @property {function(): (DialogueLine|null)} next The next line, or `null` when the runner is waiting for a choice or has finished.
+ * @property {function(): Array<{index: number, text: string}>} choices The options while waiting for a choice, otherwise an empty list.
+ * @property {function(number): void} choose Picks option `index`. Call `next()` again afterwards.
+ * @property {Object} vars The conversation's variables. They live in the state store (as `vars.<name>`) when one was given, so they are saved with the game.
+ * @property {boolean} done `true` once the conversation has ended.
+ */
+
+/**
+ * Splits `Speaker: text` into the speaker and the text. The colon needs a space after it, and the
+ * speaker is a short name. A line with no speaker comes back with `speaker: null`; write the line
+ * without one when the text itself starts with something like `Note: `.
+ * @param {string} line
+ * @returns {{speaker: string|null, text: string}}
+ * @example
+ * splitSpeaker('Guard: Halt!'); // { speaker: 'Guard', text: 'Halt!' }
+ */
 export function splitSpeaker(line) {
   const m = /^([A-Za-z][\w .'-]{0,29}):\s+(.*)$/s.exec(line);
   return m ? { speaker: m[1].trim(), text: m[2] } : { speaker: null, text: line };
 }
 
-// ["sfx:alarm", "speaker: Guard", "loud"] -> { sfx: "alarm", speaker: "Guard", loud: true }
+/**
+ * Turns a list of tags into an object. A tag is `key:value`, or just a word, which becomes `true`.
+ * @param {string[]} list
+ * @returns {Object<string, (string|boolean)>}
+ * @example
+ * parseTags(['sfx:alarm', 'speaker: Guard', 'loud']); // { sfx: 'alarm', speaker: 'Guard', loud: true }
+ */
 export function parseTags(list) {
   const tags = {};
   for (const raw of list) {
@@ -28,8 +53,13 @@ export function parseTags(list) {
   return tags;
 }
 
-// Variables object. With a state store the values live there under "vars.<name>",
-// so they are saved with the game; without one a plain object is used.
+/**
+ * Makes the variables object of a conversation. With a state store the values live there under
+ * `vars.<name>`, so they are saved with the game; without one a plain object is used.
+ * @param {StateStore|null} [state]
+ * @param {Object} [initial] Starting values, used for any variable not already set.
+ * @returns {Object} An object to read and write variables on.
+ */
 export function createVars(state = null, initial = {}) {
   if (!state) return { ...initial };
   for (const [k, v] of Object.entries(initial)) if (state.get(`vars.${k}`) === undefined) state.set(`vars.${k}`, v);

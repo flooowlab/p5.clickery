@@ -1,10 +1,20 @@
 export { pointInPolygon } from '../hit/providers.js';
 
+/**
+ * The distance between two points.
+ * @param {{x: number, y: number}} a
+ * @param {{x: number, y: number}} b
+ * @returns {number}
+ */
 export const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 export const toPoint = ([x, y]) => ({ x, y });
 
-// Signed area; the sign tells the winding direction.
+/**
+ * The signed area of a polygon. The sign tells which way the corners wind.
+ * @param {Array<Array<number>>} points The corners as `[x, y]` pairs.
+ * @returns {number}
+ */
 export function polygonArea(points) {
   let sum = 0;
   for (let i = 0; i < points.length; i++) {
@@ -15,6 +25,13 @@ export function polygonArea(points) {
   return sum / 2;
 }
 
+/**
+ * The point on a line segment that is closest to another point.
+ * @param {{x: number, y: number}} p
+ * @param {{x: number, y: number}} a One end of the segment.
+ * @param {{x: number, y: number}} b The other end.
+ * @returns {{x: number, y: number}}
+ */
 export function closestPointOnSegment(p, a, b) {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
@@ -25,8 +42,15 @@ export function closestPointOnSegment(p, a, b) {
 
 const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
 
-// True when the segments cross at a single interior point of both. Touching
-// ends and collinear overlaps do not count.
+/**
+ * Asks whether two segments cross at a single point inside both. Touching ends and overlapping
+ * segments that lie on one line do not count.
+ * @param {{x: number, y: number}} a Start of the first segment.
+ * @param {{x: number, y: number}} b End of the first segment.
+ * @param {{x: number, y: number}} c Start of the second segment.
+ * @param {{x: number, y: number}} d End of the second segment.
+ * @returns {boolean}
+ */
 export function segmentsCross(a, b, c, d) {
   const d1 = cross(a, b, c);
   const d2 = cross(a, b, d);

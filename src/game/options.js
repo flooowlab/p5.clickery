@@ -15,6 +15,7 @@
  * @property {number} [fadeMs=300] Length of the fade between rooms, in milliseconds.
  * @property {boolean} [followHero=true] In rooms wider than the screen, the camera follows the hero.
  * @property {string|null} [debugKey='d'] The key that toggles the outlines of hotspots and floors. `null` turns it off.
+ * @property {string|null} [inspectorKey=null] The key that opens the state inspector, a panel that shows the game's memory and lets you change it while you play (see {@link StateInspector}). Off by default: set it to `'i'` while developing.
  * @property {string} [language='en'] The language of `strings`.
  * @property {string} [saveSlot='game'] Where {@link Game#save} and {@link Game#load} keep the game.
  * @property {Object} [storage] Where saves and settings go (default: `localStorage`).
@@ -22,6 +23,11 @@
  * @property {HTMLElement|string} [parent] An element (or its id) to put the game in. The game fills it. Default: the page.
  * @property {boolean} [fit=true] Scale the canvas to fill its parent, with letterbox bars. `false` leaves it at its size.
  * @property {boolean} [canvas=true] `false` uses a canvas you created yourself.
+ */
+
+/**
+ * The default value of every option.
+ * @type {GameOptions}
  */
 export const GAME_DEFAULTS = {
   width: 640,
@@ -38,6 +44,7 @@ export const GAME_DEFAULTS = {
   fadeMs: 300,
   followHero: true,
   debugKey: 'd',
+  inspectorKey: null,
   saveSlot: 'game',
   storage: undefined,
   Story: undefined,

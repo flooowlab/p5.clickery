@@ -12,9 +12,12 @@ function frameSource(code) {
 <script src="${site}vendor/p5.min.js"><\/script>
 <script src="${site}dist/p5.clickery.min.js"><\/script>
 <script>
-  const report = (m) => parent.postMessage({ clickeryError: String(m) }, '*');
-  addEventListener('error', (e) => report(e.message + (e.lineno ? ' (line ' + e.lineno + ')' : '')));
-  addEventListener('unhandledrejection', (e) => report(e.reason?.message ?? e.reason));
+  // in a function, so none of these names can clash with the lesson's own
+  (() => {
+    const report = (m) => parent.postMessage({ clickeryError: String(m) }, '*');
+    addEventListener('error', (e) => report(e.message + (e.lineno ? ' (line ' + e.lineno + ')' : '')));
+    addEventListener('unhandledrejection', (e) => report(e.reason?.message ?? e.reason));
+  })();
 <\/script></head><body><script>
 ${safe}
 <\/script></body></html>`;

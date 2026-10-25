@@ -34,6 +34,21 @@ function inkVariableNames(story) {
   return vars instanceof Map ? [...vars.keys()] : [];
 }
 
+/**
+ * Turns whatever a game was given into a {@link DialogueRunner}, so {@link Game#talk} takes any
+ * format: a runner is used as it is; an inkjs `Story` or compiled Ink JSON is Ink; a Twison object
+ * (with `passages`) or text starting with `::` is Twine; any other text is the Markdown format.
+ * @param {string|Object} source
+ * @param {Object} [options]
+ * @param {StateStore} [options.state]
+ * @param {Inventory} [options.inventory] Lets Ink call `giveItem`.
+ * @param {Function} [options.Story] inkjs's `Story` class, if `ink.js` is not loaded as a script.
+ * @param {string[]} [options.sync] Ink variables to keep in the state (default: all).
+ * @param {Object<string, Function>} [options.externals] Extra Ink `EXTERNAL` functions.
+ * @param {string} [options.start] Markdown only: the section to begin with.
+ * @returns {DialogueRunner}
+ * @throws {TypeError} For a source it does not recognise.
+ */
 export function toRunner(source, { state, inventory, Story, sync, externals = {}, start } = {}) {
   if (isRunner(source)) return source;
 

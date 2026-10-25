@@ -1,14 +1,18 @@
 import { applySet, evalCondition, interpolate } from './common.js';
 
-// Runs a compiled conversation graph. The Markdown and Twine adapters both
-// compile to this shape:
-//
-//   program = { start, sections: Map(name -> { statements, end }) }
-//   statement: { type: 'line', cond?, speaker, text, tags }
-//            | { type: 'set', name, op, value }
-//   end:       { type: 'choices', options: [{ text, target, cond? }] }
-//            | { type: 'goto', target }        (target "END" finishes)
-//            | null                            (finishes)
+/**
+ * Runs a compiled conversation graph. It is a {@link DialogueRunner}. The Markdown and Twine
+ * adapters both compile to the same shape, which this runs, so you rarely make one yourself:
+ *
+ * - `program` is `{ start, sections: Map(name -> { statements, end }) }`.
+ * - A statement is a line, `{ type: 'line', cond?, speaker, text, tags }`, or a variable change, `{ type: 'set', name, op, value }`.
+ * - A section ends with choices, `{ type: 'choices', options: [{ text, target, cond? }] }`, a jump, `{ type: 'goto', target }` (target `'END'` finishes), or `null` (finishes).
+ *
+ * @param {Object} program The compiled conversation.
+ * @param {Object} options
+ * @param {Object} options.vars The variables object (see {@link createVars}).
+ * @param {RegExp} options.placeholder Matches the variables shown in text; its first group is the name.
+ */
 export class GraphRunner {
   #section = null;
   #index = 0;
@@ -22,13 +26,19 @@ export class GraphRunner {
     this.#enter(program.start);
   }
 
-  // True once nothing more can happen. Like ink, this is known as soon as the
-  // last line has been returned.
+  /**
+   * `true` once nothing more can happen. Like Ink, this is known as soon as the last line has been returned.
+   * @type {boolean}
+   */
   get done() {
     this.#peekEnd();
     return this.#done;
   }
 
+  /**
+   * The next line.
+   * @returns {DialogueLine|null} `null` when the runner is waiting for a choice or has finished.
+   */
   next() {
     for (let guard = 0; guard < 10_000; guard++) {
       if (this.#done || this.#options.length) return null;
@@ -58,11 +68,20 @@ export class GraphRunner {
     }
   }
 
+  /**
+   * The options to choose from.
+   * @returns {Array<{index: number, text: string}>} Empty when not waiting for a choice.
+   */
   choices() {
     this.#peekEnd();
     return this.#options.map((o, index) => ({ index, text: interpolate(o.text, this.vars, this.placeholder) }));
   }
 
+  /**
+   * Picks an option. Call `next()` again afterwards.
+   * @param {number} i The `index` of the option.
+   * @throws {RangeError} For an index that is not offered.
+   */
   choose(i) {
     const option = this.#options[i];
     if (!option) throw new RangeError(`no choice ${i}`);

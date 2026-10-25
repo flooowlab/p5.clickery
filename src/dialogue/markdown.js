@@ -1,21 +1,29 @@
 import { parseTags, splitSpeaker, parseValue, parseCondition, createVars } from './common.js';
 import { GraphRunner, checkTargets } from './graph.js';
 
-// A small dialogue format:
-//
-//   # start                              section (a label)
-//   Guard: Halt! Who goes there? # sfx:alarm   line, optional trailing # tags
-//   Narration without a speaker.         line with speaker null
-//   {met} Guard: Back again?             only when the condition holds
-//   ~ gold += 5                          set a variable (=, +=, -=)
-//   * A friend. -> friend                choice leading to a section
-//   * {gold >= 5} Pay the toll. -> pay   choice with a condition
-//   -> END                               jump (or finish)
-//   // comment
-//
-// Conditions: {flag}, {!flag}, {name == 3}, !=, <, >, <=, >=. {name} inside text
-// shows the variable. A section ends with a list of choices, a jump, or just
-// stops (which finishes the conversation).
+/**
+ * Reads the library's small dialogue format into a conversation program (what {@link GraphRunner} runs).
+ *
+ * ```text
+ * # start                              section (a label); the first one is where it starts
+ * Guard: Halt! Who goes there? # sfx:alarm   a line, with optional trailing # tags
+ * Narration without a speaker.         a line with no speaker
+ * {met} Guard: Back again?             only when the condition holds
+ * ~ gold += 5                          set a variable (=, +=, -=)
+ * * A friend. -> friend                a choice leading to a section
+ * * {gold >= 5} Pay the toll. -> pay   a choice with a condition
+ * -> END                               jump to a section, or finish
+ * // a comment
+ * ```
+ *
+ * Conditions are `{flag}`, `{!flag}` and `{name == 3}` (also `!=`, `<`, `>`, `<=`, `>=`). `{name}`
+ * inside text shows the variable. A section ends with a list of choices, a jump, or just stops, which
+ * finishes the conversation.
+ *
+ * @param {string} source
+ * @returns {{start: string, sections: Map<string, Object>}}
+ * @throws {Error} Naming the line, for a duplicate section, a bad jump or condition, or a jump to a section that does not exist.
+ */
 export function parseMarkdown(source) {
   const sections = new Map();
   let current = null;
@@ -75,7 +83,19 @@ export function parseMarkdown(source) {
   return program;
 }
 
-// Runner for a Markdown conversation. Pass `state` to keep variables in the store.
+/**
+ * Makes a {@link DialogueRunner} for a conversation written in the Markdown format (see {@link parseMarkdown}).
+ * {@link Game#talk} does this for you.
+ * @param {string} source
+ * @param {Object} [options]
+ * @param {StateStore} [options.state] Keeps the variables in the store (as `vars.<name>`), so they are saved with the game.
+ * @param {Object} [options.vars] Starting values for variables.
+ * @param {string} [options.start] The section to begin with. Default: the first.
+ * @returns {DialogueRunner}
+ * @example
+ * const runner = createMarkdownRunner('# start\nGuard: Halt!\n* Hello -> hi\n# hi\nGuard: Hi.');
+ * runner.next(); // { speaker: 'Guard', text: 'Halt!', tags: {} }
+ */
 export function createMarkdownRunner(source, { state = null, vars = {}, start } = {}) {
   const program = parseMarkdown(source);
   if (start) {

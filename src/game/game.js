@@ -48,6 +48,11 @@ export class Game {
    */
   debug = false;
   /**
+   * The state inspector, once it has been opened with the `inspectorKey` option (or made by hand).
+   * @type {StateInspector|null}
+   */
+  inspector = null;
+  /**
    * Extra things drawn in depth order with the hero: objects with a `baseline` (the y of their feet) and a `draw(p)` function.
    * @type {Array<{baseline: number, draw: function(Object): void}>}
    */

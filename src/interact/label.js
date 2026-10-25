@@ -1,6 +1,16 @@
-// Text for the hover label. `t` is i18n.t; item and hotspot names are localisation keys.
-//   smart mode: the object name, or "Use rope with Door" while an item is held
-//   verbs mode: "Look at Door"
+/**
+ * The text for the hover label. In smart mode: the object's name, or "Use rope with Door" while an item
+ * is held. In verbs mode: "Look at Door". Names are text keys, translated with `t`.
+ * @param {Object} options
+ * @param {Hotspot|null} [options.hotspot] The hotspot under the pointer.
+ * @param {string|null} [options.item] The inventory item under the pointer.
+ * @param {string|null} [options.held] The item being held.
+ * @param {Inventory} options.inventory
+ * @param {'smart'|'verbs'} [options.mode='smart']
+ * @param {string} [options.verb='interact']
+ * @param {function(string, Object=): string} options.t A translation function, such as `game.i18n.t`.
+ * @returns {string} The label, or an empty string.
+ */
 export function hoverLabel({ hotspot = null, item = null, held = null, inventory, mode = 'smart', verb = 'interact', t }) {
   const itemName = (id) => t(inventory.define(id).name);
   if (item) {
