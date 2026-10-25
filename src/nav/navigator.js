@@ -1,16 +1,25 @@
 import { pointInPolygon, dist, toPoint, segmentsCross, closestPointOnSegment, vertexBisector } from './geometry.js';
 import { scaleFromStops } from './depth.js';
 
-// Walkable areas minus obstacles, with any-angle pathfinding.
-//
-// Areas are the only source of movement, scale and depth: a point is walkable
-// when it is inside some area and outside every obstacle. Paths run A* over a
-// visibility graph (the polygon corners, nudged `margin` into walkable space),
-// which gives the shortest route and needs no mesh baking. Lines are checked by
-// sampling every `step` px plus exact crossing tests against obstacle edges.
-//
-//   areas:     [{ id, points: [[x, y], ...], scale: [[y, s], ...] }]
-//   obstacles: [{ id, points }]
+/**
+ * The floor of a room: walkable areas minus obstacles, with shortest-path walking. Walkable areas
+ * are the only source of movement, scale and depth: a point is walkable when it is inside some
+ * area and outside every obstacle. Paths use A* over the polygon corners, so they take the shortest
+ * route around obstacles and need no baking. A game makes one for every room it enters and gives
+ * it to the hero: `game.hero.navigator`.
+ *
+ * @example
+ * const navigator = Navigator.fromRoom(room);
+ * navigator.isWalkable(100, 300);                      // true or false
+ * navigator.findPath({ x: 50, y: 300 }, { x: 600, y: 300 }); // a list of waypoints, or null
+ * navigator.scaleAt(100, 300);                         // the size factor there
+ *
+ * @param {Object} options
+ * @param {Array<WalkableArea>} options.areas The floors. At least one.
+ * @param {Array<WalkableArea>} [options.obstacles] The holes.
+ * @param {number} [options.margin=2] How far path corners are nudged away from obstacles, in pixels.
+ * @param {number} [options.step=2] How often a straight line is sampled to check it is walkable, in pixels.
+ */
 export class Navigator {
   #nodes = null;
   #links = null;
@@ -23,22 +32,44 @@ export class Navigator {
     this.step = step;
   }
 
+  /**
+   * Makes the navigator of a room from its `walkable` and `obstacles`.
+   * @param {Room} room
+   * @param {Object} [options] The other options of the constructor.
+   * @returns {Navigator}
+   */
   static fromRoom(room, options) {
     return new Navigator({ areas: room.walkable, obstacles: room.obstacles, ...options });
   }
 
+  /**
+   * Asks whether a point is on the floor: inside some area and outside every obstacle.
+   * @param {number} x
+   * @param {number} y
+   * @returns {boolean}
+   */
   isWalkable(x, y) {
     return this.areas.some((a) => pointInPolygon(a.points, x, y))
       && !this.obstacles.some((o) => pointInPolygon(o.points, x, y));
   }
 
-  // Depth scale at a point: the last area containing it wins, 1 outside all areas.
+  /**
+   * The size of things at a point, from the `scale` stops of the area there. The last area containing the point wins.
+   * @param {number} x
+   * @param {number} y
+   * @returns {number} `1` is full size; `1` outside all areas.
+   */
   scaleAt(x, y) {
     const area = this.areas.findLast((a) => pointInPolygon(a.points, x, y));
     return area ? scaleFromStops(area.scale, y) : 1;
   }
 
-  // Is the straight line a to b walkable all the way?
+  /**
+   * Asks whether the straight line between two points is walkable all the way.
+   * @param {{x: number, y: number}} a
+   * @param {{x: number, y: number}} b
+   * @returns {boolean}
+   */
   canSee(a, b) {
     const length = dist(a, b);
     const n = Math.ceil(length / this.step);
@@ -54,7 +85,11 @@ export class Navigator {
     return true;
   }
 
-  // The walkable point closest to p (p itself when walkable), or null.
+  /**
+   * The walkable point closest to a point. This is where the hero goes when the player clicks off the floor.
+   * @param {{x: number, y: number}} p
+   * @returns {{x: number, y: number}|null} `p` itself when it is walkable; `null` when there is none.
+   */
   nearestWalkable(p) {
     if (this.isWalkable(p.x, p.y)) return { x: p.x, y: p.y };
     let best = null;
@@ -80,8 +115,12 @@ export class Navigator {
     return best;
   }
 
-  // Waypoints from `from` to `to`, not including `from`. Endpoints off the
-  // walkable area snap to the nearest walkable point. Null when unreachable.
+  /**
+   * The shortest walk between two points. A point off the floor snaps to the nearest walkable point.
+   * @param {{x: number, y: number}} from
+   * @param {{x: number, y: number}} to
+   * @returns {Array<{x: number, y: number}>|null} The waypoints to walk through, not including `from`; `null` when unreachable.
+   */
   findPath(from, to) {
     const start = this.nearestWalkable(from);
     const goal = this.nearestWalkable(to);

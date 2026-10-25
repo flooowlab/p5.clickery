@@ -3,13 +3,24 @@
 // src/core/events.js
 var EventBus = class {
   #handlers = /* @__PURE__ */ new Map();
-  // Returns an unsubscribe function.
+  /**
+   * Listens for an event.
+   * @param {string} type The event name, such as `'room:enter'`.
+   * @param {Function} handler Called with whatever the event sends.
+   * @returns {function(): void} A function that stops listening.
+   */
   on(type, handler) {
     if (typeof handler !== "function") throw new TypeError("handler must be a function");
     if (!this.#handlers.has(type)) this.#handlers.set(type, /* @__PURE__ */ new Set());
     this.#handlers.get(type).add(handler);
     return () => this.off(type, handler);
   }
+  /**
+   * Listens for the next time an event happens, and then stops.
+   * @param {string} type
+   * @param {Function} handler
+   * @returns {function(): void} A function that stops listening before it happens.
+   */
   once(type, handler) {
     const off = this.on(type, (...args) => {
       off();
@@ -17,12 +28,22 @@ var EventBus = class {
     });
     return off;
   }
+  /**
+   * Stops listening.
+   * @param {string} type
+   * @param {Function} handler The same function that was given to `on`.
+   */
   off(type, handler) {
     const set = this.#handlers.get(type);
     if (!set) return;
     set.delete(handler);
     if (set.size === 0) this.#handlers.delete(type);
   }
+  /**
+   * Announces an event to everything listening for it.
+   * @param {string} type
+   * @param {...*} args Passed to each handler.
+   */
   emit(type, ...args) {
     const set = this.#handlers.get(type);
     if (!set) return;
@@ -48,25 +69,45 @@ var Timer = class {
     this.remaining = delay;
     this.cancelled = false;
   }
+  /**
+   * Stops the timer; it will not be called again.
+   */
   cancel() {
     this.cancelled = true;
   }
 };
 var Scheduler = class {
+  /** `true` during a skipped cutscene, when every wait finishes at once. @type {boolean} */
   skipping = false;
   #timers = [];
   #waits = /* @__PURE__ */ new Set();
-  // Run callback after `ms` of game time. Returns a Timer.
+  /**
+   * Calls a function once, after some game time.
+   * @param {number} ms Milliseconds of game time.
+   * @param {Function} callback
+   * @returns {Timer}
+   */
   after(ms, callback) {
     return this.#add(new Timer(checkMs(ms), callback, false));
   }
-  // Run callback every `ms` of game time until cancelled.
+  /**
+   * Calls a function again and again, until cancelled.
+   * @param {number} ms Milliseconds of game time between calls. Above 0.
+   * @param {Function} callback
+   * @returns {Timer} Call `cancel()` on it to stop.
+   */
   every(ms, callback) {
     if (checkMs(ms) === 0) throw new RangeError("every() needs a delay above 0");
     return this.#add(new Timer(ms, callback, true));
   }
-  // Resolves after `ms` of game time. Pass an AbortSignal to reject early (cutscene skip).
-  // While `skipping` (a cutscene being skipped) waits resolve at once.
+  /**
+   * Pauses an async function for some game time. While a cutscene is being skipped, waits finish at once.
+   * @param {number} ms Milliseconds of game time.
+   * @param {AbortSignal} [signal] Rejects the wait early when aborted.
+   * @returns {Promise<void>}
+   * @example
+   * await game.scheduler.wait(1000);
+   */
   wait(ms, signal) {
     return new Promise((resolve, reject) => {
       if (signal?.aborted) return reject(signal.reason);
@@ -87,12 +128,19 @@ var Scheduler = class {
       signal?.addEventListener("abort", onAbort, { once: true });
     });
   }
-  // Cutscene fast-forward: turning it on settles every pending wait().
+  /**
+   * Cutscene fast-forward: turning it on finishes every pending wait.
+   * @param {boolean} on
+   */
   setSkipping(on) {
     this.skipping = on;
     if (!on) return;
     for (const settle of [...this.#waits]) settle();
   }
+  /**
+   * Moves game time forward and calls whatever is due. A game does this every frame.
+   * @param {number} dt Milliseconds. Not negative.
+   */
   update(dt) {
     if (!(dt >= 0)) throw new RangeError(`dt must be a non-negative number, got ${dt}`);
     for (const timer of [...this.#timers]) {
@@ -106,10 +154,17 @@ var Scheduler = class {
     }
     this.#timers = this.#timers.filter((t) => !t.cancelled);
   }
+  /**
+   * Cancels every timer.
+   */
   clear() {
     for (const timer of this.#timers) timer.cancel();
     this.#timers = [];
   }
+  /**
+   * How many timers are waiting.
+   * @type {number}
+   */
   get size() {
     return this.#timers.filter((t) => !t.cancelled).length;
   }
@@ -125,10 +180,10 @@ function checkMs(ms) {
 
 // src/core/loop.js
 var GameLoop = class {
+  /** While `true`, time does not advance. @type {boolean} */
   paused = false;
   #last = null;
   #handle = null;
-  // maxDt caps a single step, so a background tab does not cause a huge jump.
   constructor({ scheduler, events, maxDt = 100, request, cancel } = {}) {
     this.scheduler = scheduler;
     this.events = events;
@@ -136,16 +191,30 @@ var GameLoop = class {
     this.request = request ?? ((fn) => globalThis.requestAnimationFrame(fn));
     this.cancel = cancel ?? ((id) => globalThis.cancelAnimationFrame(id));
   }
+  /**
+   * `true` between `start()` and `stop()`.
+   * @type {boolean}
+   */
   get running() {
     return this.#handle !== null;
   }
+  /**
+   * Stops time from advancing, without stopping the loop.
+   */
   pause() {
     this.paused = true;
   }
+  /**
+   * Lets time advance again.
+   */
   resume() {
     this.paused = false;
   }
-  // Advance one frame to time `now` (ms). Returns the dt that was applied.
+  /**
+   * Advances one frame to a time.
+   * @param {number} now Milliseconds, as `requestAnimationFrame` gives them.
+   * @returns {number} The delta time that was applied (0 while paused).
+   */
   tick(now) {
     const dt = this.#last === null ? 0 : Math.min(Math.max(now - this.#last, 0), this.maxDt);
     this.#last = now;
@@ -154,6 +223,9 @@ var GameLoop = class {
     this.events?.emit("update", dt);
     return dt;
   }
+  /**
+   * Starts running, one frame after another. Does nothing if already running.
+   */
   start() {
     if (this.running) return;
     this.#last = null;
@@ -163,6 +235,9 @@ var GameLoop = class {
     };
     this.#handle = this.request(frame);
   }
+  /**
+   * Stops running.
+   */
   stop() {
     if (!this.running) return;
     this.cancel(this.#handle);
@@ -175,11 +250,22 @@ var initial = () => ({ flags: {}, vars: {}, inventory: [], rooms: {}, currentRoo
 var StateStore = class {
   #data = initial();
   #watchers = /* @__PURE__ */ new Map();
+  /**
+   * Reads a value.
+   * @param {string} [path] A dotted path. Without one, the whole state.
+   * @param {*} [fallback] Returned when nothing is stored at the path.
+   * @returns {*} A copy of the value.
+   */
   get(path, fallback) {
     if (path === void 0 || path === "") return this.toJSON();
     const value = getIn(this.#data, path);
     return value === void 0 ? fallback : clone(value);
   }
+  /**
+   * Stores a value, creating the path as needed, and tells whoever is watching it.
+   * @param {string} path A dotted path.
+   * @param {*} value JSON data. `undefined` is rejected: use `null`.
+   */
   set(path, value) {
     const keys = split(path);
     if (keys.length === 0) throw new Error("set() needs a path");
@@ -194,17 +280,29 @@ var StateStore = class {
     node[keys.at(-1)] = stored;
     this.#notify(before);
   }
-  // Calls fn(newValue, oldValue, path) when the value at `path` changes, including
-  // changes made to a parent or child path. Returns an unsubscribe function.
+  /**
+   * Calls a function whenever the value at a path changes, including changes made to a parent or
+   * child path.
+   * @param {string} path
+   * @param {function(*, *, string): void} fn Called with the new value, the old value and the path.
+   * @returns {function(): void} A function that stops watching.
+   */
   watch(path, fn) {
     if (!this.#watchers.has(path)) this.#watchers.set(path, /* @__PURE__ */ new Set());
     this.#watchers.get(path).add(fn);
     return () => this.#watchers.get(path)?.delete(fn);
   }
+  /**
+   * A copy of the whole state, ready to be saved.
+   * @returns {Object}
+   */
   toJSON() {
     return clone(this.#data);
   }
-  // Replaces all state. Missing top-level keys get their defaults.
+  /**
+   * Replaces all of the state, for example with what was saved. Missing top-level keys get their defaults.
+   * @param {Object} json What {@link StateStore#toJSON} returned.
+   */
   fromJSON(json) {
     if (json === null || typeof json !== "object" || Array.isArray(json)) {
       throw new TypeError("fromJSON needs an object");
@@ -247,13 +345,28 @@ var I18n = class {
     this.language = language;
     this.fallback = fallback;
   }
+  /**
+   * Adds strings to a language, keeping the ones already there.
+   * @param {string} language
+   * @param {Object<string,string>} strings Keys and their text.
+   */
   add(language, strings) {
     this.tables[language] = { ...this.tables[language], ...strings };
   }
+  /**
+   * Asks whether a key has text, in the current or the fallback language.
+   * @param {string} key
+   * @returns {boolean}
+   */
   has(key) {
     return key in (this.tables[this.language] ?? {}) || key in (this.tables[this.fallback] ?? {});
   }
-  // {name} placeholders are filled from vars.
+  /**
+   * Looks up a key. `{name}` placeholders are filled from `vars`.
+   * @param {string} key
+   * @param {Object} [vars] Values for placeholders.
+   * @returns {string} The text, or `[key]` when there is none.
+   */
   t(key, vars = {}) {
     const text = this.tables[this.language]?.[key] ?? this.tables[this.fallback]?.[key];
     if (text === void 0) return `[${key}]`;
@@ -330,13 +443,29 @@ var Settings = class {
     this.defaults = { ...DEFAULTS, ...defaults };
     this.#values = { ...this.defaults };
   }
+  /**
+   * A copy of all the settings.
+   * @type {Object}
+   */
   get all() {
     return { ...this.#values };
   }
+  /**
+   * Reads a setting.
+   * @param {string} name
+   * @returns {number|boolean}
+   * @throws {Error} For an unknown name.
+   */
   get(name) {
     this.#check(name);
     return this.#values[name];
   }
+  /**
+   * Changes a setting. A number is kept within its range. The change is saved and listeners are told.
+   * @param {string} name
+   * @param {number|boolean} value
+   * @returns {number|boolean} The value that was kept.
+   */
   set(name, value) {
     this.#check(name);
     const next = this.#clean(name, value);
@@ -346,15 +475,25 @@ var Settings = class {
     for (const fn of [...this.#listeners]) fn(name, next, this.all);
     return next;
   }
-  // Returns a function that stops listening.
+  /**
+   * Listens for changes.
+   * @param {function(string, *, Object): void} fn Called with the name, the new value and all the settings.
+   * @returns {function(): void} A function that stops listening.
+   */
   onChange(fn) {
     this.#listeners.add(fn);
     return () => this.#listeners.delete(fn);
   }
+  /**
+   * Puts every setting back to its default.
+   */
   reset() {
     for (const [name, value] of Object.entries(this.defaults)) this.set(name, value);
   }
-  // Reads saved settings; unknown or invalid entries are ignored. Returns false when nothing was saved.
+  /**
+   * Reads the saved settings. Unknown or invalid entries are ignored.
+   * @returns {boolean} `false` when nothing was saved.
+   */
   load() {
     let saved;
     try {
@@ -373,6 +512,9 @@ var Settings = class {
     }
     return true;
   }
+  /**
+   * Writes the settings to storage. `set` does it for you; in a private window it quietly does nothing.
+   */
   save() {
     try {
       this.storage?.setItem(this.key, JSON.stringify(this.#values));
@@ -478,45 +620,90 @@ function startPosition(room, name = "default") {
 
 // src/scene/camera.js
 var Camera = class {
+  /** The room x shown at the left edge. @type {number} */
   x = 0;
+  /** The room y shown at the top edge. @type {number} */
   y = 0;
   constructor(viewWidth, viewHeight, roomWidth = viewWidth, roomHeight = viewHeight) {
     this.viewWidth = viewWidth;
     this.viewHeight = viewHeight;
     this.setRoom(roomWidth, roomHeight);
   }
+  /**
+   * Tells the camera the size of the room it is looking at. The scene manager does this on every room change.
+   * @param {number} roomWidth
+   * @param {number} roomHeight
+   */
   setRoom(roomWidth, roomHeight) {
     this.roomWidth = roomWidth;
     this.roomHeight = roomHeight;
     this.moveTo(this.x, this.y);
   }
+  /**
+   * The furthest right the camera can be.
+   * @type {number}
+   */
   get maxX() {
     return Math.max(0, this.roomWidth - this.viewWidth);
   }
+  /**
+   * The furthest down the camera can be.
+   * @type {number}
+   */
   get maxY() {
     return Math.max(0, this.roomHeight - this.viewHeight);
   }
-  // Top-left of the view, clamped so the view never leaves the room.
+  /**
+   * Puts the top-left of the view somewhere, kept inside the room.
+   * @param {number} x
+   * @param {number} y
+   */
   moveTo(x, y) {
     this.x = clamp(x, 0, this.maxX);
     this.y = clamp(y, 0, this.maxY);
   }
-  // Centre the view on a room point (usually the hero).
+  /**
+   * Centres the view on a room point, usually the hero.
+   * @param {number} x
+   * @param {number} y
+   */
   centerOn(x, y) {
     this.moveTo(x - this.viewWidth / 2, y - this.viewHeight / 2);
   }
-  // Ease towards centring on a point; `speed` is the fraction closed per second.
+  /**
+   * Eases towards centring on a point. Call it every frame.
+   * @param {number} x
+   * @param {number} y
+   * @param {number} dtMs Milliseconds since the last frame.
+   * @param {number} [speed=5] The fraction of the distance closed per second.
+   */
   follow(x, y, dtMs, speed = 5) {
     const t = 1 - Math.exp(-speed * dtMs / 1e3);
     this.moveTo(this.x + (x - this.viewWidth / 2 - this.x) * t, this.y + (y - this.viewHeight / 2 - this.y) * t);
   }
-  // Where a layer with this parallax factor is drawn on screen.
+  /**
+   * Where a layer with a parallax factor is drawn on screen. `1` moves with the room, `0` stays fixed on the screen.
+   * @param {number} [parallax=1]
+   * @returns {{x: number, y: number}}
+   */
   layerOffset(parallax = 1) {
     return { x: -this.x * parallax, y: -this.y * parallax };
   }
+  /**
+   * Converts a room position to a screen position.
+   * @param {number} x
+   * @param {number} y
+   * @returns {{x: number, y: number}}
+   */
   worldToScreen(x, y) {
     return { x: x - this.x, y: y - this.y };
   }
+  /**
+   * Converts a screen position to a room position.
+   * @param {number} x
+   * @param {number} y
+   * @returns {{x: number, y: number}}
+   */
   screenToWorld(x, y) {
     return { x: x + this.x, y: y + this.y };
   }
@@ -527,14 +714,21 @@ function clamp(v, lo, hi) {
 
 // src/scene/transition.js
 var Fade = class {
+  /** How dark it is: `0` is clear, `1` is black. @type {number} */
   alpha = 0;
+  /** `true` during a skipped cutscene, when fades finish at once. @type {boolean} */
   skipping = false;
   #from = 0;
   #to = 0;
   #duration = 0;
   #elapsed = 0;
   #resolve = null;
-  // Resolves when the fade ends. Starting a new fade settles the previous one.
+  /**
+   * Fades to a darkness. Starting a new fade settles the one before.
+   * @param {number} target `0` (clear) to `1` (black).
+   * @param {number} ms How long it takes.
+   * @returns {Promise<void>} Resolves when the fade ends.
+   */
   to(target, ms) {
     this.#settle();
     this.#from = this.alpha;
@@ -549,13 +743,26 @@ var Fade = class {
       this.#resolve = resolve;
     });
   }
+  /**
+   * Fades to black.
+   * @param {number} ms
+   * @returns {Promise<void>}
+   */
   out(ms) {
     return this.to(1, ms);
   }
+  /**
+   * Fades back to clear.
+   * @param {number} ms
+   * @returns {Promise<void>}
+   */
   in(ms) {
     return this.to(0, ms);
   }
-  // Cutscene fast-forward: finish the current fade at once, and make new ones instant.
+  /**
+   * Cutscene fast-forward: finishes the current fade at once and makes new ones instant.
+   * @param {boolean} on
+   */
   setSkipping(on) {
     this.skipping = on;
     if (on && this.#resolve) {
@@ -563,9 +770,17 @@ var Fade = class {
       this.#settle();
     }
   }
+  /**
+   * `true` while a fade is under way.
+   * @type {boolean}
+   */
   get active() {
     return this.#resolve !== null;
   }
+  /**
+   * Moves the fade forward. The scene manager does this on every `update` event.
+   * @param {number} dt Milliseconds.
+   */
   update(dt) {
     if (!this.#resolve) return;
     this.#elapsed += dt;
@@ -582,6 +797,7 @@ var Fade = class {
 
 // src/scene/scene-manager.js
 var SceneManager = class {
+  /** The current room, or `null` before the first `goTo`. @type {Room|null} */
   room = null;
   #busy = false;
   #firstVisit = false;
@@ -595,10 +811,20 @@ var SceneManager = class {
     this.fade = new Fade();
     events.on("update", (dt) => this.fade.update(dt));
   }
+  /**
+   * `true` while a room change is under way.
+   * @type {boolean}
+   */
   get busy() {
     return this.#busy;
   }
-  // Fade out of the current room, switch, fade in. `start` names a start position.
+  /**
+   * Fades out of the current room, switches, and fades in.
+   * @param {string} roomId
+   * @param {string} [start='default'] Which of the room's `starts` the hero appears at.
+   * @returns {Promise<void>} Resolves after the fade-in and the `onEntered` hook.
+   * @throws {Error} When a change is already running, or the room has no such start.
+   */
   async goTo(roomId, start = "default") {
     if (this.#busy) throw new Error(`already changing rooms, cannot go to "${roomId}"`);
     this.#busy = true;
@@ -616,7 +842,11 @@ var SceneManager = class {
       this.#busy = false;
     }
   }
-  // Enter the room saved in state (after a load) without a fade. Returns false if none.
+  /**
+   * Enters the room saved in the state, without a fade. Call it after loading a game ({@link Game#load} does).
+   * @param {string} [start='default']
+   * @returns {Promise<boolean>} `false` when no room is saved.
+   */
   async restore(start = "default") {
     const id = this.state.get("currentRoom");
     if (!id) return false;
@@ -778,6 +1008,7 @@ function parseSvgPaths(svgText) {
 
 // src/hit/hotspot.js
 var Hotspot = class {
+  /** While `false`, it cannot be hit and the default drawing skips it. @type {boolean} */
   enabled = true;
   constructor({ id, name = null, provider, z = 0, walkTo = null }) {
     this.id = id;
@@ -786,6 +1017,12 @@ var Hotspot = class {
     this.z = z;
     this.walkTo = walkTo;
   }
+  /**
+   * Asks whether a point is on the hotspot.
+   * @param {number} x A room x.
+   * @param {number} y A room y.
+   * @returns {boolean} `false` when the hotspot is disabled.
+   */
   hit(x, y) {
     return this.enabled && this.provider.contains(x, y);
   }
@@ -831,16 +1068,26 @@ function createHotspots(room, assets) {
 
 // src/hit/hover.js
 var HoverTracker = class {
+  /** The hotspot under the pointer, or `null`. @type {Hotspot|null} */
   hovered = null;
   constructor(events) {
     this.events = events;
     this.hotspots = [];
   }
+  /**
+   * Sets the hotspots to look through, usually on a room change. Clears the hover.
+   * @param {Hotspot[]} hotspots
+   */
   setHotspots(hotspots) {
     this.hotspots = hotspots;
     this.#set(null);
   }
-  // Topmost hotspot at a room point: highest z wins, later entries beat earlier ones.
+  /**
+   * Looks at a point without changing the hover. When hotspots overlap the highest `z` wins, and a later one beats an earlier one.
+   * @param {number} x A room x.
+   * @param {number} y A room y.
+   * @returns {Hotspot|null}
+   */
   at(x, y) {
     let best = null;
     for (const h of this.hotspots) {
@@ -848,11 +1095,20 @@ var HoverTracker = class {
     }
     return best;
   }
+  /**
+   * Moves the pointer: finds the hotspot there and sends a `hover` event if it changed.
+   * @param {number} x A room x.
+   * @param {number} y A room y.
+   * @returns {Hotspot|null}
+   */
   update(x, y) {
     const hit = this.at(x, y);
     this.#set(hit);
     return hit;
   }
+  /**
+   * Forgets the hover, for example when the pointer leaves the game.
+   */
   clear() {
     this.#set(null);
   }
@@ -944,18 +1200,40 @@ var Navigator = class _Navigator {
     this.margin = margin;
     this.step = step;
   }
+  /**
+   * Makes the navigator of a room from its `walkable` and `obstacles`.
+   * @param {Room} room
+   * @param {Object} [options] The other options of the constructor.
+   * @returns {Navigator}
+   */
   static fromRoom(room, options) {
     return new _Navigator({ areas: room.walkable, obstacles: room.obstacles, ...options });
   }
+  /**
+   * Asks whether a point is on the floor: inside some area and outside every obstacle.
+   * @param {number} x
+   * @param {number} y
+   * @returns {boolean}
+   */
   isWalkable(x, y) {
     return this.areas.some((a) => pointInPolygon(a.points, x, y)) && !this.obstacles.some((o) => pointInPolygon(o.points, x, y));
   }
-  // Depth scale at a point: the last area containing it wins, 1 outside all areas.
+  /**
+   * The size of things at a point, from the `scale` stops of the area there. The last area containing the point wins.
+   * @param {number} x
+   * @param {number} y
+   * @returns {number} `1` is full size; `1` outside all areas.
+   */
   scaleAt(x, y) {
     const area = this.areas.findLast((a) => pointInPolygon(a.points, x, y));
     return area ? scaleFromStops(area.scale, y) : 1;
   }
-  // Is the straight line a to b walkable all the way?
+  /**
+   * Asks whether the straight line between two points is walkable all the way.
+   * @param {{x: number, y: number}} a
+   * @param {{x: number, y: number}} b
+   * @returns {boolean}
+   */
   canSee(a, b) {
     const length = dist(a, b);
     const n = Math.ceil(length / this.step);
@@ -970,7 +1248,11 @@ var Navigator = class _Navigator {
     }
     return true;
   }
-  // The walkable point closest to p (p itself when walkable), or null.
+  /**
+   * The walkable point closest to a point. This is where the hero goes when the player clicks off the floor.
+   * @param {{x: number, y: number}} p
+   * @returns {{x: number, y: number}|null} `p` itself when it is walkable; `null` when there is none.
+   */
   nearestWalkable(p) {
     if (this.isWalkable(p.x, p.y)) return { x: p.x, y: p.y };
     let best = null;
@@ -997,8 +1279,12 @@ var Navigator = class _Navigator {
     }
     return best;
   }
-  // Waypoints from `from` to `to`, not including `from`. Endpoints off the
-  // walkable area snap to the nearest walkable point. Null when unreachable.
+  /**
+   * The shortest walk between two points. A point off the floor snaps to the nearest walkable point.
+   * @param {{x: number, y: number}} from
+   * @param {{x: number, y: number}} to
+   * @returns {Array<{x: number, y: number}>|null} The waypoints to walk through, not including `from`; `null` when unreachable.
+   */
   findPath(from, to) {
     const start = this.nearestWalkable(from);
     const goal = this.nearestWalkable(to);
@@ -1087,22 +1373,36 @@ function mirrorDirection(dir) {
   return dir.replace("left", "\0").replace("right", "left").replace("\0", "right");
 }
 var AnimationState = class {
+  /** `'idle'`, `'walk'` or `'talk'`. @type {string} */
   state = "idle";
+  /** The direction faced, such as `'down'`. @type {string} */
   dir = "down";
   #elapsed = 0;
   #key = null;
   constructor(animations = {}) {
     this.animations = animations;
   }
+  /**
+   * Changes the state. The animation restarts when the state is a new one.
+   * @param {string} state
+   */
   set(state) {
     if (state !== this.state) {
       this.state = state;
       this.#elapsed = 0;
     }
   }
+  /**
+   * Changes the direction faced.
+   * @param {string} dir
+   */
   face(dir) {
     this.dir = dir;
   }
+  /**
+   * Moves the animation forward.
+   * @param {number} dt Milliseconds.
+   */
   update(dt) {
     const { key } = this.current;
     if (key !== this.#key) {
@@ -1111,7 +1411,10 @@ var AnimationState = class {
     }
     this.#elapsed += dt;
   }
-  // { key, anim, flip } for the state and direction now, or key null when none is defined.
+  /**
+   * The animation for the state and direction now.
+   * @type {{key: string|null, anim: Object|null, flip: boolean}} `key` is `null` when none is defined; `flip` is `true` when the mirror image is used.
+   */
   get current() {
     const { state, dir } = this;
     const tries = [[dir, false]];
@@ -1127,9 +1430,17 @@ var AnimationState = class {
     }
     return { key: null, anim: null, flip: false };
   }
+  /**
+   * `true` when the picture should be drawn mirrored.
+   * @type {boolean}
+   */
   get flip() {
     return this.current.flip;
   }
+  /**
+   * The picture to draw now, or `null` when there is no animation.
+   * @type {*}
+   */
   get frame() {
     const { anim } = this.current;
     if (!anim?.frames?.length) return null;
@@ -1137,6 +1448,10 @@ var AnimationState = class {
     const n = anim.frames.length;
     return anim.frames[anim.loop === false ? Math.min(step, n - 1) : step % n];
   }
+  /**
+   * `true` once an animation that does not loop has played to its end.
+   * @type {boolean}
+   */
   get finished() {
     const { anim } = this.current;
     return anim?.loop === false && this.#elapsed >= anim.frames.length * (anim.delay ?? 100);
@@ -1155,18 +1470,29 @@ function drawAnimation(p, anim, x, y, scale = 1) {
 
 // src/actor/actor.js
 var Actor = class {
+  /**
+   * What the actor is doing: `'idle'`, `'walk'` or `'talk'`.
+   * @type {string}
+   */
   mode = "idle";
-  // idle | walk | talk
+  /**
+   * The line being said, or `null`: `{ key, text, remaining }`.
+   * @type {{key: string, text: string, remaining: number}|null}
+   */
   speech = null;
-  // { key, text, remaining }
+  /**
+   * How fast lines are read. Above `1` shortens them. The player's text speed setting changes it.
+   * @type {number}
+   */
   textSpeed = 1;
-  // above 1 shortens lines
+  /**
+   * `true` during a skipped cutscene: walks jump to their end and lines are not shown.
+   * @type {boolean}
+   */
   skipping = false;
-  // cutscene fast-forward: walks jump to the end, lines are not shown
   #path = [];
   #walkDone = null;
   #sayDone = null;
-  // speed is px/s at scale 1; walking is slower further away, where the actor is smaller.
   constructor({ id, x = 0, y = 0, navigator = null, speed = 120, directions = 8, animations = {}, translate = (k) => k }) {
     this.id = id;
     this.x = x;
@@ -1177,33 +1503,71 @@ var Actor = class {
     this.translate = translate;
     this.anim = new AnimationState(animations);
   }
+  /**
+   * How big the actor is where it stands: `1` is full size, smaller further away (set by the walkable area's `scale` stops).
+   * @type {number}
+   */
   get scale() {
     return this.navigator?.scaleAt(this.x, this.y) ?? 1;
   }
+  /**
+   * The y position of its feet, which decides who stands in front of whom.
+   * @type {number}
+   */
   get baseline() {
     return this.y;
   }
+  /**
+   * The direction it faces: `'up'`, `'right'`, `'down'`, `'left'` (and `'up_right'` and so on with 8 directions).
+   * @type {string}
+   */
   get dir() {
     return this.anim.dir;
   }
+  /**
+   * `true` while a `walkTo` is under way.
+   * @type {boolean}
+   */
   get walking() {
     return this.#walkDone !== null;
   }
+  /**
+   * Jumps to a place and cancels any walk.
+   * @param {number} x
+   * @param {number} y
+   * @example
+   * hero.teleport(50, 300);
+   */
   teleport(x, y) {
     this.#endWalk(false);
     this.x = x;
     this.y = y;
   }
+  /**
+   * Turns to face a direction.
+   * @param {string} dir `'up'`, `'right'`, `'down'`, `'left'` (and `'up_right'` and so on with 8 directions).
+   * @example
+   * hero.face('left');
+   */
   face(dir) {
     this.anim.face(dir);
   }
-  // Face a point (or leave facing alone when already on it).
+  /**
+   * Turns to face a point. Does nothing when already standing on it.
+   * @param {number} x
+   * @param {number} y
+   */
   faceTowards(x, y) {
     if (x === this.x && y === this.y) return;
     this.face(directionFromVector(x - this.x, y - this.y, this.directions));
   }
-  // Resolves true on arrival, false when interrupted by a new command or when
-  // there is no route. `target.dir` turns the actor on arrival.
+  /**
+   * Walks to a point, around obstacles. A new `walkTo` (or `stop`) interrupts the one before.
+   * @param {WalkTarget} target Where to go. `dir` turns the actor that way on arrival.
+   * @returns {Promise<boolean>} `true` on arrival, `false` when interrupted or when there is no route.
+   * @example
+   * const arrived = await hero.walkTo({ x: 400, y: 300, dir: 'up' });
+   */
   walkTo(target) {
     this.#endWalk(false);
     const path = this.navigator ? this.navigator.findPath(this, target) : [{ x: target.x, y: target.y }];
@@ -1222,9 +1586,17 @@ var Actor = class {
       };
     });
   }
-  // Shows a line and resolves true when it ends. Speech key or text goes
-  // through `translate`. A newer line ends the previous one.
-  // `literal` skips translation (text that comes from a dialogue file).
+  /**
+   * Shows a line above the actor. A newer line ends the previous one. The default time is
+   * about 60 ms per character, at least 1.2 seconds.
+   * @param {string} key A text key, translated with the actor's `translate`.
+   * @param {Object} [options]
+   * @param {number} [options.ms] How long to show it, in milliseconds.
+   * @param {boolean} [options.literal=false] `true` shows `key` as it is, with no translation (for text from a dialogue file).
+   * @returns {Promise<boolean>} Resolves when the line ends or is skipped.
+   * @example
+   * await hero.say('door.locked');
+   */
   say(key, { ms, literal = false } = {}) {
     this.#endSay();
     if (this.skipping) return Promise.resolve(true);
@@ -1235,10 +1607,17 @@ var Actor = class {
       this.#sayDone = resolve;
     });
   }
+  /**
+   * Ends the line being said, as if its time had run out.
+   */
   skipSpeech() {
     this.#endSay();
   }
-  // Cutscene fast-forward. Turning it on completes the current walk and line.
+  /**
+   * Cutscene fast-forward. Turning it on completes the current walk and line; while it is on, walks
+   * jump to their end and lines are not shown. {@link Game#cutscene} uses it for Skip.
+   * @param {boolean} on
+   */
   setSkipping(on) {
     this.skipping = on;
     if (!on) return;
@@ -1248,20 +1627,34 @@ var Actor = class {
     }
     this.#endSay();
   }
-  // Stop whatever the actor is doing.
+  /**
+   * Stops walking and talking. A pending `walkTo` resolves `false`.
+   */
   stop() {
     this.#endWalk(false);
     this.#endSay();
   }
+  /**
+   * Moves the actor along its path and advances its line and animation. A game calls it every frame.
+   * @param {number} dt Milliseconds since the last step.
+   */
   update(dt) {
     if (this.speech && (this.speech.remaining -= dt * this.textSpeed) <= 0) this.#endSay();
     if (this.#path.length) this.#step(dt);
     this.anim.set(this.speech ? "talk" : this.#path.length ? "walk" : "idle");
     this.anim.update(dt);
   }
+  /**
+   * What a save keeps: where the actor stands and which way it faces.
+   * @returns {{x: number, y: number, dir: string}}
+   */
   toJSON() {
     return { x: this.x, y: this.y, dir: this.dir };
   }
+  /**
+   * Puts the actor back where {@link Actor#toJSON} said.
+   * @param {WalkTarget} saved
+   */
   fromJSON({ x, y, dir }) {
     this.teleport(x, y);
     if (dir) this.face(dir);
@@ -1314,17 +1707,38 @@ var Inventory = class {
     this.items = items;
     this.recipes = recipes;
   }
+  /**
+   * The ids of the items carried, in the order they were picked up.
+   * @type {string[]}
+   */
   get list() {
     return this.state.get("inventory", []);
   }
+  /**
+   * Asks whether an item is carried.
+   * @param {string} id
+   * @returns {boolean}
+   */
   has(id) {
     return this.list.includes(id);
   }
+  /**
+   * The definition of an item.
+   * @param {string} id
+   * @returns {{name: string}}
+   * @throws {Error} For an id that is not in `items`.
+   */
   define(id) {
     if (!(id in this.items)) throw new Error(`unknown item "${id}"`);
     return this.items[id];
   }
-  // Returns false when the player already has it.
+  /**
+   * Puts an item in the inventory.
+   * @param {string} id An id from `items`.
+   * @returns {boolean} `true`, or `false` when it was already carried.
+   * @example
+   * inventory.give('stick');
+   */
   give(id) {
     this.define(id);
     if (this.has(id)) return false;
@@ -1332,17 +1746,34 @@ var Inventory = class {
     this.events?.emit("inventory:add", { id });
     return true;
   }
+  /**
+   * Takes an item out of the inventory.
+   * @param {string} id
+   * @returns {boolean} `true`, or `false` when it was not carried.
+   */
   remove(id) {
     if (!this.has(id)) return false;
     this.state.set("inventory", this.list.filter((i) => i !== id));
     this.events?.emit("inventory:remove", { id });
     return true;
   }
+  /**
+   * Looks up the recipe for two items, in either order. Does not check what is carried.
+   * @param {string} a
+   * @param {string} b
+   * @returns {Object|null} The recipe, or `null` when the two do not combine.
+   */
   recipeFor(a, b) {
     return this.recipes.find((r) => r.a === a && r.b === b || r.a === b && r.b === a) ?? null;
   }
-  // Combines two carried items. Returns the recipe used, or null when there is
-  // none or either item is missing.
+  /**
+   * Combines two carried items: removes the ingredients the recipe uses up and gives the result.
+   * @param {string} a
+   * @param {string} b
+   * @returns {Object|null} The recipe used, or `null` when there is none or either item is not carried.
+   * @example
+   * inventory.combine('stick', 'string'); // now carrying 'pole'
+   */
   combine(a, b) {
     if (a === b || !this.has(a) || !this.has(b)) return null;
     const recipe = this.recipeFor(a, b);
@@ -1357,11 +1788,25 @@ var Inventory = class {
 
 // src/interact/interactor.js
 var Interactor = class {
+  /**
+   * The inventory item being held (clicked in the bar), or `null`.
+   * @type {string|null}
+   */
   held = null;
-  // selected inventory item id
+  /**
+   * In `'verbs'` mode, the verb the next click uses: `'interact'`, `'look'`, `'use'` or `'walk'`. Set it from your own buttons.
+   * @type {string}
+   */
   verb = "interact";
+  /**
+   * What is happening: `'idle'`, `'walk'` (walking to a hotspot) or `'act'` (a handler is running).
+   * @type {string}
+   */
   phase = "idle";
-  // idle | walk | act
+  /**
+   * Called with the error when a handler throws. Default: `console.error`.
+   * @type {function(Error): void}
+   */
   onError = (err) => console.error(err);
   #token = 0;
   constructor({ hero, state, events, inventory, hover, cutscenes = null, dialogue = null, audio = null, mode = "smart", defaults = {} }) {
@@ -1383,17 +1828,33 @@ var Interactor = class {
     };
     this.handlers = /* @__PURE__ */ new Map();
   }
+  /**
+   * Sets the handlers of a hotspot or item. Registering the same id again merges into what is there.
+   * @param {string} id
+   * @param {Object} handlers `onInteract`, `onLook` and `onUse`, each `(ctx: ScriptContext) => ...`; return `false` for "not handled".
+   */
   register(id, handlers) {
     this.handlers.set(id, { ...this.handlers.get(id), ...handlers });
   }
-  // Input is ignored during a handler, a cutscene and a conversation.
+  /**
+   * `true` while input is ignored: a handler is running, a cutscene is on or a conversation is playing.
+   * @type {boolean}
+   */
   get busy() {
     return this.phase === "act" || this.locked;
   }
+  /**
+   * `true` during a cutscene or a conversation.
+   * @type {boolean}
+   */
   get locked() {
     return Boolean(this.cutscenes?.active || this.dialogue?.active);
   }
-  // Holds an item (or null to put it away). Only carried items can be held.
+  /**
+   * Holds an item, or puts it away. Clicking an item in the bar does this.
+   * @param {string|null} item A carried item, or `null` to put it away.
+   * @throws {Error} For an item that is not carried.
+   */
   select(item) {
     if (item !== null) {
       this.inventory.define(item);
@@ -1403,6 +1864,11 @@ var Interactor = class {
     this.events?.emit("inventory:select", { id: item });
   }
   // ---- entry points used by the pointer controller (all return promises) ----
+  /**
+   * A click on a hotspot: walks to its `walkTo`, then runs `onInteract` (or `onUse` when an item is held).
+   * @param {Hotspot} hotspot
+   * @returns {Promise<boolean>} `false` when input is being ignored.
+   */
   clickHotspot(hotspot) {
     if (this.busy) return Promise.resolve(false);
     if (this.mode === "verbs") {
@@ -1412,9 +1878,19 @@ var Interactor = class {
     }
     return this.#onHotspot(hotspot, this.held ? "use" : "interact", this.held);
   }
+  /**
+   * A right-click or long press on a hotspot: walks to it and runs `onLook`.
+   * @param {Hotspot} hotspot
+   * @returns {Promise<boolean>}
+   */
   lookHotspot(hotspot) {
     return this.#onHotspot(hotspot, "look", null);
   }
+  /**
+   * A click on an item in the bar: holds it; or, while another item is held, tries to combine the two.
+   * @param {string} id
+   * @returns {Promise<boolean>}
+   */
   clickItem(id) {
     if (this.busy) return Promise.resolve(false);
     if (this.mode === "verbs" && this.verb === "look") return this.lookItem(id);
@@ -1428,10 +1904,20 @@ var Interactor = class {
     }
     return this.#combine(this.held, id);
   }
+  /**
+   * A right-click or long press on an item in the bar: runs its `onLook`.
+   * @param {string} id
+   * @returns {Promise<boolean>}
+   */
   lookItem(id) {
     if (this.busy) return Promise.resolve(false);
     return this.#perform(null, "look", { id, hotspot: null, itemUsed: null }, "item");
   }
+  /**
+   * A click on the floor: the hero walks there.
+   * @param {{x: number, y: number}} point
+   * @returns {Promise<boolean>} `true` on arrival.
+   */
   async clickGround(point) {
     if (this.busy) return false;
     const token = ++this.#token;
@@ -1491,7 +1977,24 @@ var Interactor = class {
     const key = isKey ? keyOrVerb : this.defaults[keyOrVerb];
     return key ? this.hero.say(key) : Promise.resolve();
   }
-  // What handlers receive. Also used for room and object enter hooks.
+  /**
+   * What a handler receives: the context of the action. Also given to room and object enter hooks.
+   *
+   * @typedef {Object} ScriptContext
+   * @property {string} verb What the player did: `'interact'`, `'look'` or `'use'`.
+   * @property {string} id The id of the hotspot or item it was done to.
+   * @property {Hotspot|null} hotspot The hotspot, or `null` when the target is an item.
+   * @property {string|null} item The item being used on it (in `onUse`), otherwise `null`.
+   * @property {Actor} hero The hero.
+   * @property {StateStore} state The game's memory.
+   * @property {Inventory} inventory What the player carries.
+   * @property {Interactor} interactor The part that runs handlers.
+   * @property {Cutscenes|null} cutscenes Runs cutscenes.
+   * @property {DialogueSession|null} dialogue Plays conversations.
+   * @property {AudioManager|null} audio Plays sounds, if the game has any.
+   * @property {function(string, Object=): Promise<boolean>} say The hero says a line (a text key).
+   * @property {function(string, boolean): void} setEnabled Switches a hotspot of the current room on or off. Saved with the game.
+   */
   context(target, verb) {
     return {
       verb,
@@ -1509,7 +2012,13 @@ var Interactor = class {
       setEnabled: (hotspotId, enabled) => this.setHotspotEnabled(hotspotId, enabled)
     };
   }
-  // Enable or disable a hotspot in the current room; saved with the game.
+  /**
+   * Switches a hotspot on or off. A hotspot that is off cannot be clicked and is not drawn. The
+   * choice is saved with the game (`ctx.setEnabled` calls this).
+   * @param {string} hotspotId
+   * @param {boolean} enabled
+   * @param {string} [roomId] Default: the current room.
+   */
   setHotspotEnabled(hotspotId, enabled, roomId = this.state.get("currentRoom")) {
     this.state.set(`rooms.${roomId}.hotspots.${hotspotId}.enabled`, enabled);
     const live = this.hover?.hotspots.find((h) => h.id === hotspotId);
@@ -1524,9 +2033,21 @@ function applyHotspotState(state, roomId, hotspots) {
 
 // src/interact/pointer-controller.js
 var PointerController = class {
+  /**
+   * Touch: the hotspot waiting for its second tap.
+   * @type {Hotspot|null}
+   */
   highlighted = null;
   // touch: hotspot waiting for its second tap
+  /**
+   * The inventory item under the pointer.
+   * @type {string|null}
+   */
   hoveredItem = null;
+  /**
+   * The last screen position, for drawing the label.
+   * @type {{x: number, y: number}|null}
+   */
   pointer = null;
   // last screen position, for drawing the label
   #press = null;
@@ -1535,18 +2056,33 @@ var PointerController = class {
     Object.assign(this, { interactor, hover, camera, bar, scheduler, longPressMs, moveTolerance });
     this.onError = (err) => console.error(err);
   }
+  /**
+   * The pointer moved.
+   * @param {{x: number, y: number}} position In screen (logical canvas) coordinates.
+   */
   move({ x, y }) {
     this.pointer = { x, y };
     if (this.#press && Math.hypot(x - this.#press.x, y - this.#press.y) > this.moveTolerance) this.#cancelPress();
     if (this.#press?.pointerType === "touch") return;
     this.#updateHover(x, y);
   }
+  /**
+   * The pointer left the game.
+   */
   leave() {
     this.pointer = null;
     this.hoveredItem = null;
     this.#cancelPress();
     this.hover.clear();
   }
+  /**
+   * A press began.
+   * @param {Object} event
+   * @param {number} event.x
+   * @param {number} event.y
+   * @param {string} [event.pointerType='mouse'] `'mouse'`, `'touch'` or `'pen'`.
+   * @param {number} [event.button=0] `2` is a right-click, which looks.
+   */
   down({ x, y, pointerType = "mouse", button = 0 }) {
     this.pointer = { x, y };
     this.#cancelPress();
@@ -1562,6 +2098,10 @@ var PointerController = class {
       this.#run(this.#look(x, y));
     });
   }
+  /**
+   * The press ended; a short press is a click or tap.
+   * @param {{x: number, y: number}} [position]
+   */
   up({ x, y } = this.#press ?? {}) {
     const press = this.#press;
     if (!press) return;
@@ -1569,7 +2109,9 @@ var PointerController = class {
     if (press.consumed) return;
     this.#run(this.#tap(x ?? press.x, y ?? press.y, press.pointerType));
   }
-  // Pending cancel, e.g. when a cutscene starts or the pointer leaves.
+  /**
+   * Cancels a pending press, for example when a cutscene starts.
+   */
   cancel() {
     this.#cancelPress();
     this.highlighted = null;
@@ -1655,8 +2197,11 @@ var defaultStrings = {
 
 // src/script/cutscene.js
 var Cutscenes = class {
+  /** `true` while a cutscene is running. @type {boolean} */
   active = false;
+  /** `true` once the running (or last) cutscene was skipped. @type {boolean} */
   skipped = false;
+  /** `false` for a cutscene that cannot be skipped. @type {boolean} */
   skippable = true;
   #depth = 0;
   #skipTarget = null;
@@ -1667,13 +2212,28 @@ var Cutscenes = class {
     this.targets = [...targets];
     if (scheduler && !this.targets.includes(scheduler)) this.targets.push(scheduler);
   }
+  /**
+   * Adds things that should fast-forward when a cutscene is skipped, such as another actor.
+   * @param {...Object} targets Objects with `setSkipping(bool)`.
+   */
   add(...targets) {
     for (const t of targets) if (!this.targets.includes(t)) this.targets.push(t);
   }
+  /**
+   * `true` while fast-forwarding.
+   * @type {boolean}
+   */
   get skipping() {
     return this.#fastForward;
   }
-  // Nested calls run inline inside the outer cutscene.
+  /**
+   * Runs a cutscene. A cutscene started inside another one just runs inline.
+   * @param {function({label: function(string): void, wait: function(number): Promise<void>, skipped: boolean, skipping: function(): boolean}): Promise<*>} script
+   * It receives `cs`: `cs.label(name)` marks a place to skip to, `cs.wait(ms)` waits in game time, and `cs.skipped` tells whether the player skipped.
+   * @param {Object} [options]
+   * @param {boolean} [options.skippable=true] `false` hides the Skip button.
+   * @returns {Promise<*>} The script's result.
+   */
   async run(script, { skippable = true } = {}) {
     if (this.#depth > 0) return script(this.#api());
     this.#depth++;
@@ -1692,7 +2252,11 @@ var Cutscenes = class {
       this.events?.emit("cutscene:end", { skipped: this.skipped });
     }
   }
-  // Returns false when there is nothing to skip.
+  /**
+   * Skips the running cutscene: the Skip button and Escape call this.
+   * @param {string} [toLabel] Skip only as far as `cs.label(toLabel)`, then play normally.
+   * @returns {boolean} `false` when there is nothing to skip.
+   */
   skip(toLabel = null) {
     if (!this.active || !this.skippable) return false;
     this.skipped = true;
@@ -1700,7 +2264,10 @@ var Cutscenes = class {
     this.#setSkipping(true);
     return true;
   }
-  // Marks a point in the script. Fast-forward aimed at this label stops here.
+  /**
+   * Marks a point in the script: fast-forward aimed at this label stops here.
+   * @param {string} name
+   */
   label(name) {
     if (this.#fastForward && this.#skipTarget === name) {
       this.#skipTarget = null;
@@ -1729,19 +2296,39 @@ var Scripts = class {
   constructor({ interactor }) {
     this.interactor = interactor;
   }
+  /**
+   * Sets the script of an object.
+   * @param {string} id A hotspot, item or room id.
+   * @param {Object} handlers `onInteract`, `onLook`, `onUse`, `onEnter`, `onEntered`, `onExit`.
+   * @returns {Scripts} Itself, so calls can be chained.
+   */
   add(id, handlers) {
     this.interactor.register(id, handlers);
     return this;
   }
-  // { id: handlers } or { id: moduleNamespace }; a module's default export wins.
+  /**
+   * Sets many scripts at once.
+   * @param {Object<string, Object>} map `{ id: handlers }`, where each value can also be an imported module (a module's default export wins).
+   * @returns {Scripts} Itself.
+   */
   addAll(map) {
     for (const [id, mod] of Object.entries(map)) this.add(id, mod.default ?? mod);
     return this;
   }
+  /**
+   * Looks up the script of an object.
+   * @param {string} id
+   * @returns {Object|undefined}
+   */
   get(id) {
     return this.interactor.handlers.get(id);
   }
-  // Called by the scene manager with its context. Hooks run in hotspot order.
+  /**
+   * Runs a hook (`'onEnter'` or `'onEntered'`) for every hotspot of a room that has one. The scene manager calls this.
+   * @param {Object} sceneCtx The scene manager's context: `{ room, state, scene, ... }`.
+   * @param {string} hook
+   * @returns {Promise<void>}
+   */
   async runEnter(sceneCtx, hook) {
     for (const def of sceneCtx.room.hotspots) {
       const handler = this.get(def.id)?.[hook];
@@ -1839,12 +2426,18 @@ var GraphRunner = class {
     this.placeholder = placeholder;
     this.#enter(program.start);
   }
-  // True once nothing more can happen. Like ink, this is known as soon as the
-  // last line has been returned.
+  /**
+   * `true` once nothing more can happen. Like Ink, this is known as soon as the last line has been returned.
+   * @type {boolean}
+   */
   get done() {
     this.#peekEnd();
     return this.#done;
   }
+  /**
+   * The next line.
+   * @returns {DialogueLine|null} `null` when the runner is waiting for a choice or has finished.
+   */
   next() {
     for (let guard = 0; guard < 1e4; guard++) {
       if (this.#done || this.#options.length) return null;
@@ -1875,10 +2468,19 @@ var GraphRunner = class {
       if (!this.#options.length) this.#done = true;
     }
   }
+  /**
+   * The options to choose from.
+   * @returns {Array<{index: number, text: string}>} Empty when not waiting for a choice.
+   */
   choices() {
     this.#peekEnd();
     return this.#options.map((o, index) => ({ index, text: interpolate(o.text, this.vars, this.placeholder) }));
   }
+  /**
+   * Picks an option. Call `next()` again afterwards.
+   * @param {number} i The `index` of the option.
+   * @throws {RangeError} For an index that is not offered.
+   */
   choose(i) {
     const option = this.#options[i];
     if (!option) throw new RangeError(`no choice ${i}`);
@@ -2151,12 +2753,21 @@ function inkExternals({ inventory, state }) {
 
 // src/dialogue/session.js
 var DialogueSession = class {
+  /** `true` while a conversation is playing. @type {boolean} */
   active = false;
   constructor({ events, subtitles, menu }) {
     this.events = events;
     this.subtitles = subtitles;
     this.menu = menu;
   }
+  /**
+   * Plays a conversation from its first line to its end.
+   * @param {DialogueRunner} runner
+   * @param {Object} [options]
+   * @param {AbortSignal} [options.signal] Cuts the conversation short; `play` then rejects with the signal's reason.
+   * @returns {Promise<DialogueRunner>} The runner, so you can read its `vars` afterwards.
+   * @throws {Error} When a conversation is already running.
+   */
   async play(runner, { signal } = {}) {
     if (this.active) throw new Error("a conversation is already running");
     this.active = true;
@@ -2200,13 +2811,17 @@ function fitLetterbox(containerWidth, containerHeight, logicalWidth, logicalHeig
   return { scale, width, height, offsetX: (containerWidth - width) / 2, offsetY: (containerHeight - height) / 2 };
 }
 var LetterboxScaler = class {
+  /** The latest layout: `{ scale, width, height, offsetX, offsetY }`. @type {Object|null} */
   layout = null;
   #observer = null;
   #onWindowResize = () => this.update();
   constructor({ canvas, container, width, height, integer = false, maxScale = Infinity, onResize = null }) {
     Object.assign(this, { canvas, container, width, height, integer, maxScale, onResize });
   }
-  // Measure, then size and position the canvas.
+  /**
+   * Measures the container, then sizes and positions the canvas.
+   * @returns {Object} The layout.
+   */
   update() {
     const layout = fitLetterbox(this.container.clientWidth, this.container.clientHeight, this.width, this.height, this);
     const style = this.canvas.style;
@@ -2219,6 +2834,10 @@ var LetterboxScaler = class {
     this.onResize?.(layout);
     return layout;
   }
+  /**
+   * Starts watching the window and the container, and fits the canvas now.
+   * @returns {LetterboxScaler} Itself.
+   */
   start() {
     if (this.container.style && !this.container.style.position) this.container.style.position = "relative";
     globalThis.addEventListener?.("resize", this.#onWindowResize);
@@ -2230,14 +2849,21 @@ var LetterboxScaler = class {
     this.update();
     return this;
   }
+  /**
+   * Stops watching.
+   */
   stop() {
     globalThis.removeEventListener?.("resize", this.#onWindowResize);
     globalThis.removeEventListener?.("orientationchange", this.#onWindowResize);
     this.#observer?.disconnect();
     this.#observer = null;
   }
-  // Browser pointer position -> logical canvas position. Works on the bars too
-  // (the result is simply outside 0..width / 0..height).
+  /**
+   * Maps a browser pointer position to a logical game position. It works on the bars too: the result is simply outside the game.
+   * @param {number} clientX
+   * @param {number} clientY
+   * @returns {{x: number, y: number}}
+   */
   toLogical(clientX, clientY) {
     const rect = this.canvas.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return { x: 0, y: 0 };
@@ -2246,7 +2872,11 @@ var LetterboxScaler = class {
       y: (clientY - rect.top) / rect.height * this.height
     };
   }
-  // True when a logical point is on the game rather than on a bar.
+  /**
+   * Asks whether a logical point is on the game rather than on a bar.
+   * @param {{x: number, y: number}} point
+   * @returns {boolean}
+   */
   inside({ x, y }) {
     return x >= 0 && y >= 0 && x < this.width && y < this.height;
   }
@@ -2254,6 +2884,10 @@ var LetterboxScaler = class {
 
 // src/audio/audio.js
 var AudioManager = class {
+  /**
+   * The registered sounds by id: `{ url, buffer }`. The buffer is `null` until loaded.
+   * @type {Map<string, {url: string, buffer: (AudioBuffer|null)}>}
+   */
   sounds = /* @__PURE__ */ new Map();
   // id -> { url, buffer }
   #music = null;
@@ -2273,9 +2907,16 @@ var AudioManager = class {
     this.stopListening = settings?.onChange(() => this.applyVolumes()) ?? (() => {
     });
   }
+  /**
+   * The id of the music playing now, or `null`.
+   * @type {string|null}
+   */
   get musicId() {
     return this.#music && !this.#music.fading ? this.#music.id : null;
   }
+  /**
+   * Sets the four volumes from the settings. It runs by itself when a setting changes.
+   */
   applyVolumes() {
     const s = this.settings;
     const set = (gain, value) => gain.gain.setValueAtTime(value, this.context.currentTime);
@@ -2285,21 +2926,42 @@ var AudioManager = class {
     set(this.buses.voice, s?.get("voiceVolume") ?? 1);
   }
   // ---- loading ----
+  /**
+   * Tells the manager which sounds exist. Nothing is loaded yet.
+   * @param {Object<string, string>} map Sound id to file: `{ theme: 'theme.ogg' }`.
+   */
   register(map) {
     for (const [id, url] of Object.entries(map)) this.sounds.set(id, { url, buffer: null });
   }
+  /**
+   * Loads and decodes one sound.
+   * @param {string} id
+   * @returns {Promise<AudioBuffer>}
+   * @throws {Error} For an id that was not registered.
+   */
   async load(id) {
     const sound = this.#sound(id);
     sound.buffer ??= await this.loadBuffer(sound.url);
     return sound.buffer;
   }
+  /**
+   * Loads every registered sound. A game does this in `start()`.
+   * @returns {Promise<AudioBuffer[]>}
+   */
   loadAll() {
     return Promise.all([...this.sounds.keys()].map((id) => this.load(id)));
   }
-  // Browsers only start audio after a click or key press.
+  /**
+   * Starts the audio context. Browsers allow that only after a click or key press.
+   * @returns {Promise<void>}
+   */
   unlock() {
     return this.context.state === "running" ? Promise.resolve() : this.context.resume();
   }
+  /**
+   * Unlocks audio at the first click, key press or touch.
+   * @param {EventTarget} [target] Default: the window.
+   */
   unlockOnGesture(target = globalThis) {
     const go = () => {
       this.unlock();
@@ -2308,15 +2970,35 @@ var AudioManager = class {
     for (const type of ["pointerdown", "keydown", "touchend"]) target.addEventListener(type, go);
   }
   // ---- playing ----
-  // Plays a loaded sound once (or looping). Returns { stop() }, or null if it is not loaded yet.
+  /**
+   * Plays a loaded sound effect once. Playing a sound that is unknown or not loaded yet is silent (with one console warning), never an error.
+   * @param {string} id
+   * @param {Object} [options]
+   * @param {number} [options.volume=1]
+   * @param {boolean} [options.loop=false]
+   * @returns {{stop: function(): void}|null} A handle to stop it, or `null` if it was not played.
+   */
   playSfx(id, options = {}) {
     return this.#play(id, "sfx", options);
   }
+  /**
+   * Plays a loaded voice line on the voice bus. Like {@link AudioManager#playSfx}.
+   * @param {string} id
+   * @param {Object} [options]
+   * @param {number} [options.volume=1]
+   * @returns {{stop: function(): void}|null}
+   */
   playVoice(id, options = {}) {
     return this.#play(id, "voice", options);
   }
-  // Starts a music track, fading the old one out and the new one in over fadeMs.
-  // Asking for the track that is already playing does nothing.
+  /**
+   * Starts a music track, fading the old one out and the new one in. Asking for the track that is already playing does nothing.
+   * @param {string} id
+   * @param {Object} [options]
+   * @param {number} [options.fadeMs=1000] Length of the crossfade.
+   * @param {boolean} [options.loop=true]
+   * @param {number} [options.volume=1]
+   */
   playMusic(id, { fadeMs = 1e3, loop = true, volume = 1 } = {}) {
     if (this.#music?.id === id && !this.#music.fading) return this.#music;
     const buffer = this.#loaded(id);
@@ -2331,14 +3013,28 @@ var AudioManager = class {
     this.#music = track;
     return track;
   }
+  /**
+   * Fades the music out.
+   * @param {number} [fadeMs=1000]
+   */
   stopMusic(fadeMs = 1e3) {
     this.#fadeOutMusic(fadeMs / 1e3);
     this.#music = null;
   }
   // ---- wiring to the game ----
-  // room:enter -> the room's `music` field (omitted: keep playing, null: silence);
-  // dialogue:tag sfx:<id> -> that sound; `sfx` maps an event name to a sound id, or to a
-  // function (eventData) => id | { id, volume } | null.
+  /**
+   * Connects sound to the game's events: entering a room plays its `music` (omitted keeps the current
+   * music, `null` is silence); a dialogue tag `# sfx:name` plays that sound; and `sfx` maps an event name
+   * to a sound id, or to a function `(eventData) => id | { id, volume } | null`. The `sfx` option of
+   * {@link createGame} does this.
+   * @param {EventBus} events
+   * @param {Object} [options]
+   * @param {boolean} [options.roomMusic=true]
+   * @param {boolean} [options.dialogueSfx=true]
+   * @param {Object<string, (string|Function)>} [options.sfx] `{ 'inventory:add': 'pickup' }`
+   * @param {number} [options.fadeMs=1000]
+   * @returns {function(): void} A function that disconnects it.
+   */
   attach(events, { roomMusic = true, dialogueSfx = true, sfx = {}, fadeMs = 1e3 } = {}) {
     const offs = [];
     if (roomMusic) {
@@ -2363,6 +3059,9 @@ var AudioManager = class {
     }
     return () => offs.forEach((off) => off());
   }
+  /**
+   * Stops listening and closes the audio context.
+   */
   dispose() {
     this.stopListening();
     this.stopMusic(0);
@@ -2426,33 +3125,63 @@ var AudioManager = class {
 
 // src/ui/subtitles.js
 var SubtitleBar = class {
+  /** `false` hides the bar (the player's subtitles setting). Lines still pace and resolve. @type {boolean} */
   enabled = true;
+  /** Multiplies reveal and reading speed (the player's text speed setting). @type {number} */
   speed = 1;
+  /** How fast the text is revealed. @type {number} */
   charsPerSecond = 40;
+  /** Reading time after the text is shown, whatever its length, in milliseconds. @type {number} */
   baseHoldMs = 700;
+  /** Extra reading time for each character, in milliseconds. @type {number} */
   holdMsPerChar = 25;
+  /** The line on show, or `null`. @type {DialogueLine|null} */
   line = null;
-  // { speaker, text, tags }
   #elapsed = 0;
   #resolve = null;
   #reject = null;
+  /**
+   * `true` while a line is on show.
+   * @type {boolean}
+   */
   get active() {
     return this.line !== null;
   }
+  /**
+   * `true` once all of the line's text is revealed.
+   * @type {boolean}
+   */
   get fullyShown() {
     return this.line !== null && this.visibleCount >= this.line.text.length;
   }
+  /**
+   * How many characters of the line are revealed.
+   * @type {number}
+   */
   get visibleCount() {
     if (!this.line) return 0;
     return Math.min(this.line.text.length, Math.floor(this.#elapsed * this.charsPerSecond * this.speed / 1e3));
   }
+  /**
+   * The part of the line revealed so far.
+   * @type {string}
+   */
   get visibleText() {
     return this.line ? this.line.text.slice(0, this.visibleCount) : "";
   }
-  // Milliseconds of reading time after the text is fully shown.
+  /**
+   * Milliseconds of reading time after the text is fully shown.
+   * @type {number}
+   */
   get holdMs() {
     return (this.baseHoldMs + this.line.text.length * this.holdMsPerChar) / this.speed;
   }
+  /**
+   * Shows a line.
+   * @param {DialogueLine} line
+   * @param {AbortSignal} [signal] Rejects when aborted.
+   * @returns {Promise<void>} Resolves when the line has been read.
+   */
   show(line, signal) {
     this.#finish();
     if (signal?.aborted) return Promise.reject(signal.reason);
@@ -2464,21 +3193,33 @@ var SubtitleBar = class {
       signal?.addEventListener("abort", () => this.#abort(signal.reason), { once: true });
     });
   }
+  /**
+   * Moves the reveal and the reading time forward. A game does this every frame.
+   * @param {number} dt Milliseconds.
+   */
   update(dt) {
     if (!this.line) return;
     this.#elapsed += dt;
     const revealMs = this.line.text.length * 1e3 / (this.charsPerSecond * this.speed);
     if (this.#elapsed >= revealMs + this.holdMs) this.#finish();
   }
-  // Click or tap: show the rest of the line, or move on when it is all there.
+  /**
+   * A click or tap: shows the rest of the line, or moves on when it is all there.
+   */
   advance() {
     if (!this.line) return;
     if (this.fullyShown) this.#finish();
     else this.#elapsed = this.line.text.length * 1e3 / (this.charsPerSecond * this.speed);
   }
+  /**
+   * Moves on at once.
+   */
   skip() {
     this.#finish();
   }
+  /**
+   * Takes the line away without resolving it.
+   */
   hide() {
     this.#abort(null);
   }
@@ -2496,7 +3237,13 @@ var SubtitleBar = class {
     this.#reject = null;
     if (reason !== null) reject?.(reason);
   }
-  // Browser only: a box above the inventory bar.
+  /**
+   * Draws the bar: a box above the inventory bar. Browser only.
+   * @param {Object} p The p5 sketch.
+   * @param {Object} [options]
+   * @param {number} [options.bottom=70] How far above the bottom of the screen the box ends.
+   * @param {number} [options.margin=16] The space at the sides.
+   */
   draw(p, { bottom = 70, margin = 16 } = {}) {
     if (!this.enabled || !this.line) return;
     const w = p.width - margin * 2;
@@ -2520,16 +3267,28 @@ var SubtitleBar = class {
 
 // src/ui/choice-menu.js
 var ChoiceMenu = class {
+  /** The choices on show: `{ index, text }`. Empty when closed. @type {Array<{index: number, text: string}>} */
   options = [];
+  /** The row under the pointer, or `null`. @type {number|null} */
   hovered = null;
   #resolve = null;
   #reject = null;
   constructor({ viewWidth, viewHeight, rowHeight = 26, bottom = 70, margin = 16 }) {
     Object.assign(this, { viewWidth, viewHeight, rowHeight, bottom, margin });
   }
+  /**
+   * `true` while a question is on show.
+   * @type {boolean}
+   */
   get open() {
     return this.options.length > 0;
   }
+  /**
+   * Shows choices and waits for the player.
+   * @param {Array<{index: number, text: string}>} choices
+   * @param {AbortSignal} [signal] Rejects when aborted.
+   * @returns {Promise<number>} The `index` of the choice made.
+   */
   ask(choices, signal) {
     this.#close();
     if (signal?.aborted) return Promise.reject(signal.reason);
@@ -2540,10 +3299,21 @@ var ChoiceMenu = class {
       signal?.addEventListener("abort", () => this.close(signal.reason), { once: true });
     });
   }
+  /**
+   * The screen rectangle of a row.
+   * @param {number} i
+   * @returns {{x: number, y: number, w: number, h: number}}
+   */
   rowRect(i) {
     const top = this.viewHeight - this.bottom - this.options.length * this.rowHeight;
     return { x: this.margin, y: top + i * this.rowHeight, w: this.viewWidth - this.margin * 2, h: this.rowHeight };
   }
+  /**
+   * Which row is at a screen position.
+   * @param {number} x
+   * @param {number} y
+   * @returns {number|null}
+   */
   itemAt(x, y) {
     for (let i = 0; i < this.options.length; i++) {
       const r = this.rowRect(i);
@@ -2551,17 +3321,31 @@ var ChoiceMenu = class {
     }
     return null;
   }
+  /**
+   * Moves the pointer, for the row highlight.
+   * @param {number} x
+   * @param {number} y
+   */
   move(x, y) {
     this.hovered = this.itemAt(x, y);
   }
-  // Returns true when the press was on a row (and chose it).
+  /**
+   * A press at a screen position.
+   * @param {number} x
+   * @param {number} y
+   * @returns {boolean} `true` when it was on a row, and chose it.
+   */
   click(x, y) {
     const i = this.itemAt(x, y);
     if (i === null) return false;
     this.pick(i);
     return true;
   }
-  // Also for keyboard: key "1" picks index 0.
+  /**
+   * Chooses a row. The number keys use it: key `1` picks row 0.
+   * @param {number} i
+   * @returns {boolean} `false` when no question is open or there is no such row.
+   */
   pick(i) {
     if (!this.open || i < 0 || i >= this.options.length) return false;
     const resolve = this.#resolve;
@@ -2570,7 +3354,10 @@ var ChoiceMenu = class {
     resolve?.(choice.index ?? i);
     return true;
   }
-  // Abandon the question; the pending ask() rejects with `reason` when given.
+  /**
+   * Abandons the question.
+   * @param {*} [reason] When given, the pending `ask()` rejects with it.
+   */
   close(reason = null) {
     const reject = this.#reject;
     this.#close();
@@ -2582,6 +3369,10 @@ var ChoiceMenu = class {
     this.#resolve = null;
     this.#reject = null;
   }
+  /**
+   * Draws the rows. Browser only.
+   * @param {Object} p The p5 sketch.
+   */
   draw(p) {
     if (!this.open) return;
     p.textAlign(p.LEFT, p.CENTER);
@@ -2621,21 +3412,44 @@ var InventoryBar = class {
   constructor({ viewWidth, viewHeight, slot = 40, gap = 4, margin = 6 }) {
     Object.assign(this, { viewWidth, viewHeight, slot, gap, margin });
   }
+  /**
+   * The y where the strip starts.
+   * @type {number}
+   */
   get top() {
     return this.viewHeight - this.slot - this.margin * 2;
   }
+  /**
+   * How many slots fit in the strip.
+   * @type {number}
+   */
   get perRow() {
     return Math.max(1, Math.floor((this.viewWidth - this.margin * 2 + this.gap) / (this.slot + this.gap)));
   }
-  // Top-left of slot i.
+  /**
+   * The screen rectangle of slot `i`.
+   * @param {number} i
+   * @returns {{x: number, y: number, w: number, h: number}}
+   */
   slotRect(i) {
     return { x: this.margin + i * (this.slot + this.gap), y: this.top + this.margin, w: this.slot, h: this.slot };
   }
-  // The bar's whole strip, so clicks on it never fall through to the room.
+  /**
+   * Asks whether a screen point is on the strip, so clicks on it never fall through to the room.
+   * @param {number} x
+   * @param {number} y
+   * @returns {boolean}
+   */
   contains(x, y) {
     return y >= this.top && y <= this.viewHeight && x >= 0 && x <= this.viewWidth;
   }
-  // Item id under a screen point, or null.
+  /**
+   * Which item is at a screen point.
+   * @param {number} x
+   * @param {number} y
+   * @param {string[]} items The ids of the items carried, in order.
+   * @returns {string|null}
+   */
   itemAt(x, y, items) {
     for (let i = 0; i < Math.min(items.length, this.perRow); i++) {
       const r = this.slotRect(i);
@@ -2643,6 +3457,13 @@ var InventoryBar = class {
     }
     return null;
   }
+  /**
+   * Draws the strip, with the held item outlined. Browser only.
+   * @param {Object} p The p5 sketch.
+   * @param {string[]} items The ids of the items carried.
+   * @param {string|null} [held] The item being held.
+   * @param {Object<string, Object>} [images] Loaded p5 images by item id.
+   */
   draw(p, items, held = null, images = {}) {
     p.noStroke();
     p.fill(0, 0, 0, 150);
@@ -2722,6 +3543,215 @@ function drawDebugOverlay(p, { hotspots = [], room = null, camera, hovered = nul
   p.text(hovered ? `hover: ${hovered.id} (${hovered.provider.kind})` : "hover: -", 6, p.height - 8);
 }
 
+// src/debug/inspector.js
+function flatten(object, prefix = "") {
+  const out = [];
+  for (const [key, value] of Object.entries(object ?? {})) {
+    const path = prefix ? `${prefix}.${key}` : key;
+    if (value !== null && typeof value === "object" && !Array.isArray(value)) out.push(...flatten(value, path));
+    else out.push([path, value]);
+  }
+  return out;
+}
+var StateInspector = class {
+  #game;
+  #doc;
+  #maxEvents;
+  #root = null;
+  #refs = {};
+  #stops = [];
+  #log = [];
+  constructor(game, { document: document2 = globalThis.document, maxEvents = 60 } = {}) {
+    this.#game = game;
+    this.#doc = document2;
+    this.#maxEvents = maxEvents;
+  }
+  /**
+   * `true` while the panel is open.
+   * @type {boolean}
+   */
+  get visible() {
+    return this.#root !== null;
+  }
+  /**
+   * Everything the panel shows, as plain data (this is also handy in a test).
+   * @returns {{room: (string|null), rooms: string[], hero: Object, state: Object, flags: Array<Array>, items: string[], carried: string[], events: Array<{type: string, data: string}>}}
+   */
+  snapshot() {
+    const g = this.#game;
+    const state = g.state.toJSON();
+    return {
+      room: g.room?.id ?? null,
+      rooms: [...g.rooms.keys()],
+      hero: g.hero.toJSON(),
+      state,
+      flags: flatten(state.flags),
+      items: Object.keys(g.inventory.items),
+      carried: g.inventory.list,
+      events: [...this.#log]
+    };
+  }
+  /**
+   * Opens the panel and starts logging events.
+   */
+  show() {
+    if (this.visible) return;
+    this.#build();
+    const { events, state } = this.#game;
+    const emit = events.emit.bind(events);
+    events.emit = (type, ...args) => {
+      if (type !== "update") this.#record(type, args);
+      return emit(type, ...args);
+    };
+    this.#stops.push(() => {
+      delete events.emit;
+    }, state.watch("", () => this.refresh()));
+    this.refresh();
+  }
+  /**
+   * Closes the panel and stops logging.
+   */
+  hide() {
+    if (!this.visible) return;
+    for (const stop of this.#stops.splice(0)) stop();
+    this.#root.remove();
+    this.#root = null;
+    this.#refs = {};
+  }
+  /**
+   * Opens the panel if it is closed, and closes it if it is open.
+   */
+  toggle() {
+    if (this.visible) this.hide();
+    else this.show();
+  }
+  /**
+   * Redraws the panel from the game's current state. It does this by itself when the state changes.
+   */
+  refresh() {
+    if (!this.visible) return;
+    const snap = this.snapshot();
+    const r = this.#refs;
+    r.room.textContent = `room: ${snap.room}   hero: ${Math.round(snap.hero.x)}, ${Math.round(snap.hero.y)} facing ${snap.hero.dir}`;
+    const roomsKey = `${snap.rooms.join()}|${snap.room}`;
+    if (r.roomsKey !== roomsKey) {
+      r.roomsKey = roomsKey;
+      this.#fill(r.rooms, snap.rooms.map((id) => this.#option(id, id === snap.room)));
+    }
+    this.#fill(r.items, snap.items.map((id) => this.#row(id, snap.carried.includes(id), (on) => on ? this.#game.give(id) : this.#game.take(id))));
+    this.#fill(r.flags, snap.flags.length ? snap.flags.map(([path, value]) => typeof value === "boolean" ? this.#row(path, value, (on) => this.#game.state.set(`flags.${path}`, on)) : this.#text(`${path} = ${JSON.stringify(value)}`)) : [this.#text("no flags yet")]);
+    if (this.#doc.activeElement !== r.json) r.json.value = JSON.stringify(snap.state, null, 2);
+    this.#fill(r.events, snap.events.slice(-12).reverse().map((e) => this.#text(`${e.type}  ${e.data}`)));
+  }
+  #record(type, args) {
+    let data = "";
+    try {
+      data = JSON.stringify(args.length === 1 ? args[0] : args) ?? "";
+    } catch {
+      data = "(not shown)";
+    }
+    this.#log.push({ type, data: data.length > 80 ? `${data.slice(0, 77)}...` : data });
+    if (this.#log.length > this.#maxEvents) this.#log.shift();
+    this.refresh();
+  }
+  async #apply(reenter) {
+    const r = this.#refs;
+    try {
+      this.#game.state.fromJSON(JSON.parse(r.json.value));
+      r.message.textContent = "applied";
+      if (reenter) await this.#game.scene.restore();
+    } catch (err) {
+      r.message.textContent = `not applied: ${err.message}`;
+    }
+  }
+  #build() {
+    const doc = this.#doc;
+    const el = (tag, props = {}, ...kids) => {
+      const node = doc.createElement(tag);
+      const { style, on, ...rest } = props;
+      Object.assign(node, rest);
+      Object.assign(node.style, style);
+      for (const [type, fn] of Object.entries(on ?? {})) node.addEventListener(type, fn);
+      kids.forEach((k) => node.appendChild(k));
+      return node;
+    };
+    const heading = (text) => el("div", { textContent: text, style: { margin: "10px 0 4px", color: "#8f98ad", textTransform: "uppercase", fontSize: "11px" } });
+    const button = (text, fn) => el("button", { textContent: text, on: { click: fn }, style: { marginRight: "4px" } });
+    const r = this.#refs;
+    r.room = el("div");
+    r.rooms = el("select");
+    r.items = el("div");
+    r.flags = el("div");
+    r.json = el("textarea", { rows: 10, spellcheck: false, style: { width: "100%", boxSizing: "border-box", fontFamily: "inherit", fontSize: "11px" } });
+    r.message = el("div", { style: { color: "#ffd678" } });
+    r.events = el("div", { style: { color: "#b4bccc" } });
+    this.#root = el(
+      "div",
+      { style: {
+        position: "fixed",
+        top: "0",
+        right: "0",
+        bottom: "0",
+        width: "320px",
+        overflow: "auto",
+        zIndex: "99999",
+        padding: "8px 10px",
+        background: "rgba(20,22,28,0.96)",
+        color: "#e2e5ee",
+        font: "12px/1.5 ui-monospace, Consolas, monospace",
+        borderLeft: "1px solid #3a3f4c"
+      } },
+      el(
+        "div",
+        { style: { display: "flex", justifyContent: "space-between" } },
+        el("b", { textContent: "State inspector" }),
+        button("close", () => this.hide())
+      ),
+      r.room,
+      heading("go to a room"),
+      el("div", {}, r.rooms, button("go", () => this.#game.goTo(r.rooms.value))),
+      heading("inventory"),
+      r.items,
+      heading("flags"),
+      r.flags,
+      heading("state (json)"),
+      r.json,
+      el("div", {}, button("apply", () => this.#apply(false)), button("apply + re-enter room", () => this.#apply(true))),
+      r.message,
+      heading("game"),
+      el("div", {}, button("save", () => this.#game.save()), button("load", () => this.#game.load())),
+      heading("events"),
+      r.events
+    );
+    doc.body.appendChild(this.#root);
+  }
+  #fill(parent, nodes) {
+    parent.textContent = "";
+    nodes.forEach((n) => parent.appendChild(n));
+  }
+  #text(text) {
+    const node = this.#doc.createElement("div");
+    node.textContent = text;
+    return node;
+  }
+  #option(value, selected) {
+    const node = this.#doc.createElement("option");
+    Object.assign(node, { value, textContent: value, selected });
+    return node;
+  }
+  #row(label, checked, onChange) {
+    const input = this.#doc.createElement("input");
+    input.type = "checkbox";
+    input.checked = checked;
+    input.addEventListener("change", () => onChange(input.checked));
+    const row = this.#doc.createElement("label");
+    row.style.display = "block";
+    row.appendChild(input);
+    row.appendChild(this.#doc.createTextNode(` ${label}`));
+    return row;
+  }
+};
+
 // src/game/conversation.js
 var stories = /* @__PURE__ */ new WeakMap();
 var storiesByText = /* @__PURE__ */ new Map();
@@ -2776,6 +3806,7 @@ var GAME_DEFAULTS = {
   fadeMs: 300,
   followHero: true,
   debugKey: "d",
+  inspectorKey: null,
   saveSlot: "game",
   storage: void 0,
   Story: void 0
@@ -2788,6 +3819,11 @@ var Game = class {
    * @type {boolean}
    */
   debug = false;
+  /**
+   * The state inspector, once it has been opened with the `inspectorKey` option (or made by hand).
+   * @type {StateInspector|null}
+   */
+  inspector = null;
   /**
    * Extra things drawn in depth order with the hero: objects with a `baseline` (the y of their feet) and a `draw(p)` function.
    * @type {Array<{baseline: number, draw: function(Object): void}>}
@@ -3186,7 +4222,7 @@ function prepareContainer(el, width, height) {
   return parent;
 }
 function bindInput(game, el) {
-  const { width, height, debugKey } = game.options;
+  const { width, height, debugKey, inspectorKey } = game.options;
   const { pointer, menu, subtitles, dialogue, cutscenes, scene } = game;
   const at = (e) => game.scaler ? game.scaler.toLogical(e.clientX, e.clientY) : clientToLogical(e.clientX, e.clientY, el.getBoundingClientRect(), width, height);
   el.addEventListener("contextmenu", (e) => e.preventDefault());
@@ -3218,6 +4254,10 @@ function bindInput(game, el) {
       subtitles.skip();
     } else if (/^[1-9]$/.test(e.key) && menu.open) menu.pick(Number(e.key) - 1);
     else if (debugKey && e.key.toLowerCase() === debugKey.toLowerCase()) game.debug = !game.debug;
+    else if (inspectorKey && e.key.toLowerCase() === inspectorKey.toLowerCase()) {
+      game.inspector ??= new StateInspector(game, { document: el.ownerDocument });
+      game.inspector.toggle();
+    }
   });
 }
 async function loadImages(game, p) {
@@ -3383,6 +4423,7 @@ export {
   Scheduler,
   Scripts,
   Settings,
+  StateInspector,
   StateStore,
   SubtitleBar,
   Timer,

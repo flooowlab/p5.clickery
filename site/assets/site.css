@@ -122,3 +122,21 @@ table.params { border-collapse: collapse; width: 100%; margin: 8px 0; font-size:
   .stage { position: static; }
   .hero h1 { font-size: 34px; }
 }
+
+/* tools */
+.tools-index { max-width: 980px; margin: 0 auto; padding: 24px 16px 64px; }
+.muted { color: var(--muted); margin-top: 0; }
+.tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin: 12px 0 8px; }
+.tool-card { display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; text-decoration: none; color: var(--ink); }
+.tool-card:hover { border-color: var(--accent); }
+.tool-card b { font-size: 17px; margin-right: 6px; }
+.tool-card span:not(.badge) { display: block; color: var(--muted); margin-top: 4px; font-size: 15px; }
+.badge { display: inline-block; vertical-align: middle; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.badge.available { color: var(--tok-s); border-color: var(--tok-s); }
+.badge.planned { color: var(--tok-n); border-color: var(--tok-n); }
+.tool { margin: 0 auto; }
+.tool .lead { font-size: 18px; color: var(--muted); margin-top: 0; }
+.tool h1 .badge { font-size: 12px; margin-left: 8px; }
+.tool .crumb { margin: 0 0 8px; font-size: 14px; }
+.button { display: inline-block; background: var(--accent); color: var(--accent-ink); font-weight: 600; text-decoration: none; padding: 8px 16px; border-radius: 8px; }
+.tool pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; }

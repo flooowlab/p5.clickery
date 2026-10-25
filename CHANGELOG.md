@@ -6,6 +6,11 @@
 - A website for GitHub Pages: **Learn** (live, editable lessons) and **Docs** (generated from JSDoc comments in `src/`). `npm run build:site` builds it into `_site/`.
 - JSDoc comments on `createGame`, `createGameCanvas`, `registerClickery`, `GameOptions` and every `Game` member. No behaviour change; `Game` gains the declared properties `actors` and `scaler` (both were already used).
 - `GAME_DEFAULTS` moved to `src/game/options.js` (still exported from the same place).
+- JSDoc for `Actor` (and the `WalkTarget` type), `Inventory`, `Interactor` (and the `ScriptContext` type), and `once`, `firstLook`, `firstInteract`, `firstUse`. No behaviour change.
+- Website: 56 lessons in 12 topics, a Tools section, and complete reference pages (every export has a JSDoc comment; the docs are grouped by area, with Functions, Types and Constants pages).
+- JSDoc for the rest of the library: the core parts (`EventBus`, `StateStore`, `Scheduler`, `Timer`, `I18n`, `GameLoop`, `Settings`, saving), rooms (`Room`, `RoomStart`, `WalkableArea`, `Camera`, `SceneManager`, `Fade`), hotspots (`HotspotDefinition`, `Hotspot`, `HoverTracker`, providers), navigation, animation, scripts, cutscenes, dialogue (`DialogueRunner`, `DialogueLine`, the adapters), UI and audio. No behaviour change.
+- `StateInspector` and the `inspectorKey` option (default `null`, off): a panel that shows the game's memory live, lets you change flags, items and the whole state, jump to a room, save and load, and logs events. `game.inspector` holds it once opened.
+- Tools: `tools/check-rooms.mjs` (checks room files), `tools/find-keys.mjs` (finds missing and unused text keys), `tools/dialogue/` (dialogue previewer) and `tools/animation/` (animation previewer). The package now includes them.
 
 ## 0.1.0 (2026-10-19)
 

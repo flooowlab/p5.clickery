@@ -15,10 +15,16 @@ import path from 'node:path';
 
 const FENCE = /```js\n([\s\S]*?)```/;
 
-export function parseLesson(file) {
+// A Markdown file with "key: value" lines between --- lines at the top: { meta, body }.
+export function parseFrontmatter(file) {
   const raw = fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
-  const [, front = '', rest = raw] = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/) ?? [];
+  const [, front = '', body = raw] = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/) ?? [];
   const meta = Object.fromEntries(front.split('\n').filter(Boolean).map((l) => [l.slice(0, l.indexOf(':')).trim(), l.slice(l.indexOf(':') + 1).trim()]));
+  return { meta, body };
+}
+
+export function parseLesson(file) {
+  const { meta, body: rest } = parseFrontmatter(file);
   const slug = path.basename(file, '.md').replace(/^\d+-/, '');
   const pages = rest.split(/^<!-- page: (.*) -->$/m).slice(1);
   const out = [];

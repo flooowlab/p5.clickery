@@ -1,8 +1,19 @@
-// Dialogue choices as a list of rows, bottom-aligned above the inventory bar.
-// ask() shows them and resolves with the chosen index. Layout and hit-testing
-// are pure screen coordinates; draw() uses p5.
+/**
+ * The dialogue choices, as a list of rows above the inventory bar. `ask()` shows them and resolves
+ * with the index of the one chosen, by click, tap or the number keys 1 to 9. Layout and hit-testing
+ * are plain screen coordinates; only `draw()` uses p5. A game has one: `game.menu`.
+ *
+ * @param {Object} options
+ * @param {number} options.viewWidth The screen width.
+ * @param {number} options.viewHeight The screen height.
+ * @param {number} [options.rowHeight=26]
+ * @param {number} [options.bottom=70] How far above the bottom of the screen the list ends.
+ * @param {number} [options.margin=16] The space at the sides.
+ */
 export class ChoiceMenu {
+  /** The choices on show: `{ index, text }`. Empty when closed. @type {Array<{index: number, text: string}>} */
   options = [];
+  /** The row under the pointer, or `null`. @type {number|null} */
   hovered = null;
   #resolve = null;
   #reject = null;
@@ -11,10 +22,20 @@ export class ChoiceMenu {
     Object.assign(this, { viewWidth, viewHeight, rowHeight, bottom, margin });
   }
 
+  /**
+   * `true` while a question is on show.
+   * @type {boolean}
+   */
   get open() {
     return this.options.length > 0;
   }
 
+  /**
+   * Shows choices and waits for the player.
+   * @param {Array<{index: number, text: string}>} choices
+   * @param {AbortSignal} [signal] Rejects when aborted.
+   * @returns {Promise<number>} The `index` of the choice made.
+   */
   ask(choices, signal) {
     this.#close();
     if (signal?.aborted) return Promise.reject(signal.reason);
@@ -26,11 +47,22 @@ export class ChoiceMenu {
     });
   }
 
+  /**
+   * The screen rectangle of a row.
+   * @param {number} i
+   * @returns {{x: number, y: number, w: number, h: number}}
+   */
   rowRect(i) {
     const top = this.viewHeight - this.bottom - this.options.length * this.rowHeight;
     return { x: this.margin, y: top + i * this.rowHeight, w: this.viewWidth - this.margin * 2, h: this.rowHeight };
   }
 
+  /**
+   * Which row is at a screen position.
+   * @param {number} x
+   * @param {number} y
+   * @returns {number|null}
+   */
   itemAt(x, y) {
     for (let i = 0; i < this.options.length; i++) {
       const r = this.rowRect(i);
@@ -39,11 +71,21 @@ export class ChoiceMenu {
     return null;
   }
 
+  /**
+   * Moves the pointer, for the row highlight.
+   * @param {number} x
+   * @param {number} y
+   */
   move(x, y) {
     this.hovered = this.itemAt(x, y);
   }
 
-  // Returns true when the press was on a row (and chose it).
+  /**
+   * A press at a screen position.
+   * @param {number} x
+   * @param {number} y
+   * @returns {boolean} `true` when it was on a row, and chose it.
+   */
   click(x, y) {
     const i = this.itemAt(x, y);
     if (i === null) return false;
@@ -51,7 +93,11 @@ export class ChoiceMenu {
     return true;
   }
 
-  // Also for keyboard: key "1" picks index 0.
+  /**
+   * Chooses a row. The number keys use it: key `1` picks row 0.
+   * @param {number} i
+   * @returns {boolean} `false` when no question is open or there is no such row.
+   */
   pick(i) {
     if (!this.open || i < 0 || i >= this.options.length) return false;
     const resolve = this.#resolve;
@@ -61,7 +107,10 @@ export class ChoiceMenu {
     return true;
   }
 
-  // Abandon the question; the pending ask() rejects with `reason` when given.
+  /**
+   * Abandons the question.
+   * @param {*} [reason] When given, the pending `ask()` rejects with it.
+   */
   close(reason = null) {
     const reject = this.#reject;
     this.#close();
@@ -75,6 +124,10 @@ export class ChoiceMenu {
     this.#reject = null;
   }
 
+  /**
+   * Draws the rows. Browser only.
+   * @param {Object} p The p5 sketch.
+   */
   draw(p) {
     if (!this.open) return;
     p.textAlign(p.LEFT, p.CENTER);

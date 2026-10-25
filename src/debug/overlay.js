@@ -1,5 +1,14 @@
-// Debug overlay: outlines hotspots and walkable areas in room space. Draw it
-// after the scene; the camera offset is applied here.
+/**
+ * Draws the debug outlines in room space: walkable areas (blue), obstacles (green) and hotspots (red;
+ * yellow when hovered), with the hovered hotspot's id. Draw it after the scene; the camera offset is
+ * applied here. A game draws it when `game.debug` is on (the D key). Browser only.
+ * @param {Object} p The p5 sketch.
+ * @param {Object} scene
+ * @param {Hotspot[]} [scene.hotspots]
+ * @param {Room} [scene.room]
+ * @param {Camera} scene.camera
+ * @param {Hotspot|null} [scene.hovered]
+ */
 export function drawDebugOverlay(p, { hotspots = [], room = null, camera, hovered = null }) {
   p.push();
   p.translate(-camera.x, -camera.y);

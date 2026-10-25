@@ -4,6 +4,8 @@ A library for making point-and-click adventure games with [p5.js](https://p5js.o
 
 You describe your game with plain data (rooms, clickable areas, items) and small scripts, and the library takes care of walking, clicking, inventory, cutscenes, dialogue and saving.
 
+**Learn by doing:** the [website](https://flooowlab.github.io/p5.clickery/) has short lessons with a live, editable game on every page, the full reference for every function (generated from the source), and the tools described below. This README is the written guide.
+
 This guide is for people who already know a little p5.js (`setup`, `draw`, drawing shapes). It explains how to *use* the library. You do not need to know anything about adventure-game engines.
 
 **Contents**
@@ -69,7 +71,8 @@ then visit `http://localhost:8000/examples/` for the list.
 | `dist/` | **The files to use**: `p5.clickery.min.js` (a `<script>` tag after p5), `p5.clickery.js` (the same, readable) and `p5.clickery.esm.js` (for `import`). Built from `src/`; never edit them by hand. |
 | `src/` | The library's source. `src/index.js` exports everything. |
 | `examples/` | Runnable examples (each folder has an `index.html`), plus `assets/` shared by them (generated sounds). |
-| `tools/` | The room editor (`tools/editor/`) and small Node scripts: `build.mjs` (builds `dist/`), `compile-ink.mjs` (Ink to JSON), `make-example-audio.mjs` and `make-sample-room.mjs` (regenerate example assets). |
+| `tools/` | The room editor (`tools/editor/`), the dialogue and animation previewers (`tools/dialogue/`, `tools/animation/`) and Node scripts: `check-rooms.mjs`, `find-keys.mjs`, `compile-ink.mjs` (Ink to JSON), `build.mjs` (builds `dist/`), `build-site.mjs` (the website), `make-example-audio.mjs` and `make-sample-room.mjs` (regenerate example assets). See [Tools](#tools). |
+| `site/` | The website's lessons (`site/learn/`), tool pages (`site/tools/`) and styles. The reference pages are generated from the JSDoc comments in `src/`. |
 | `docs/` | The [format reference](docs/reference.md). |
 | `test/` | Automated tests, run with `npm test`: `unit/` has one file per `src/` folder, `tools/` tests the editor, `integration/` plays the Lighthouse from start to finish, `release/` checks the package and the documentation links, `fixtures/` holds test data. |
 
@@ -1044,6 +1047,23 @@ The picture is named in the JSON (`"background": "hall.png"`); give `drawBackgro
 * **Ctrl+Z** / **Ctrl+Y** undo and redo. Your work is kept in the browser automatically, so closing the tab does not lose it.
 * **Import…** opens a room JSON again (also one written by hand). Hotspots that use the `svg` or `colorMask` providers are kept exactly as they are; the editor only edits polygon hotspots.
 * The editor needs a picture with fairly flat colours for the wand to work well: paint or export the floor, door and so on in distinct colours, or just use the Polygon tool.
+
+## Tools
+
+Besides the room editor, these help with the rest of making a game. Each has a page on the [website](https://flooowlab.github.io/p5.clickery/tools/) with the details.
+
+| Tool | What it does |
+| --- | --- |
+| Room editor (`tools/editor/index.html`) | Draw hotspots and floors on your room picture, export the room JSON. |
+| State inspector | Press the key set by `inspectorKey: 'i'` to see the game's memory, change flags and items, jump to a room and watch events while you play. Off by default. |
+| Debug overlay | Press `d` (or set `game.debug = true`) to outline every hotspot and floor. |
+| `node tools/check-rooms.mjs rooms/*.json` | Checks room files for mistakes (bad shapes, a `walkTo` off the floor, no start). Exits with 1 on an error. |
+| `node tools/find-keys.mjs --strings strings.en.json rooms scripts` | Lists the text keys your game uses, and the ones that are missing, never used, or lacking in a language. |
+| Dialogue previewer (`tools/dialogue/index.html`) | Play a Markdown or Twine conversation in a page, with variables and checks for parts that can never be reached. |
+| Animation previewer (`tools/animation/index.html`) | Cut a sprite sheet into frames, preview the animations and copy the hero's `animations` option. |
+| `node tools/compile-ink.mjs file.ink` | Compiles Ink to the `.ink.json` that `game.talk` plays. |
+
+The pages in `tools/` import from `src/`, so serve the folder (`npx http-server`) rather than opening the files directly.
 
 ## Recipes
 

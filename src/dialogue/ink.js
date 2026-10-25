@@ -19,6 +19,32 @@ import { parseTags, splitSpeaker } from './common.js';
 // calls createInkRunner(story, ...) every time the player starts talking.
 const attached = new WeakMap(); // story -> the runner currently linked to it
 
+/**
+ * Makes a {@link DialogueRunner} for an Ink story. The library never imports inkjs itself, so Ink
+ * stays an optional add-on: give it an inkjs `Story` built from a compiled `.ink.json`
+ * (see the Ink compiler tool).
+ *
+ * - **Tags:** `# speaker: Guard` sets the line's speaker; any other `# key: value` lands in `line.tags` (for example `sfx`). Without a speaker tag, a `Name: ` prefix is used.
+ * - **externals:** `{ giveItem: (id) => ... }` are bound as Ink `EXTERNAL` functions.
+ * - **sync:** names of Ink variables mirrored to the state store (`vars.<name>`), both ways.
+ *
+ * A runner is one conversation. Creating a new runner for the same story replaces the previous one:
+ * it is detached first, then the story is reset to its beginning (pass `reset: false` to carry on a
+ * story that is part-way through), then `sync` variables are restored from the state store. So a game
+ * just calls `createInkRunner(story, ...)` every time the player starts talking.
+ *
+ * @example
+ * import { Story } from 'inkjs';
+ * const runner = createInkRunner(new Story(json), { state, sync: ['passed'], externals: inkExternals({ inventory, state }) });
+ *
+ * @param {Object} story An inkjs `Story`.
+ * @param {Object} [options]
+ * @param {StateStore} [options.state]
+ * @param {string[]} [options.sync] Ink variables to keep in the state store.
+ * @param {Object<string, Function>} [options.externals] Implementations of `EXTERNAL` functions.
+ * @param {boolean} [options.reset=true] Start the story from the beginning.
+ * @returns {DialogueRunner}
+ */
 export function createInkRunner(story, { state = null, sync = [], externals = {}, reset = true } = {}) {
   attached.get(story)?.dispose();
   if (reset) story.ResetState();
@@ -95,8 +121,15 @@ export function createInkRunner(story, { state = null, sync = [], externals = {}
   return runner;
 }
 
-// Ready-made EXTERNAL functions for the usual game hooks:
-//   EXTERNAL giveItem(item)    EXTERNAL setFlag(name)
+/**
+ * Ready-made `EXTERNAL` functions for the usual game hooks, so Ink can call `giveItem("key")` to
+ * put an item in the inventory and `setFlag("name")` to set a flag. In Ink, declare them with
+ * `EXTERNAL giveItem(item)` and `EXTERNAL setFlag(name)`. {@link Game#talk} binds them for you.
+ * @param {Object} parts
+ * @param {Inventory} parts.inventory
+ * @param {StateStore} parts.state
+ * @returns {{giveItem: function(string): void, setFlag: function(string): void}}
+ */
 export function inkExternals({ inventory, state }) {
   return {
     giveItem: (id) => { inventory.give(id); },

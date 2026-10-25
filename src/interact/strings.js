@@ -1,5 +1,9 @@
-// Built-in English strings. Add them with i18n.add('en', defaultStrings) and
-// override any key in your own tables.
+/**
+ * The built-in English texts: the default answers (`default.interact`, `default.look`, `default.use`,
+ * `default.combine`), the hover labels (`ui.use_on`, `ui.use_item`) and the verb names (`verb.*`). A game
+ * adds them for you; override any key in your own `strings`.
+ * @type {Object<string, string>}
+ */
 export const defaultStrings = {
   'default.interact': "That won't do anything.",
   'default.look': 'Nothing special.',

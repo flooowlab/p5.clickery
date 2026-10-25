@@ -5,7 +5,13 @@ import path from 'node:path';
 
 export function loadDoclets(root) {
   const bin = path.join(root, 'node_modules', 'jsdoc', 'jsdoc.js');
-  const json = execFileSync(process.execPath, [bin, '-X', '-r', 'src'], { cwd: root, encoding: 'utf8', maxBuffer: 1 << 26 });
+  let json;
+  try {
+    json = execFileSync(process.execPath, [bin, '-X', '-r', 'src'], { cwd: root, encoding: 'utf8', maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch (err) {
+    // jsdoc's stderr names the file, line and tag; the rest of the error is a dump of its output
+    throw new Error(`jsdoc failed:\n${String(err.stderr).split('\n').filter((l) => l.startsWith('ERROR')).join('\n') || err.message}`);
+  }
   return JSON.parse(json).filter((d) => !d.undocumented && !d.ignore && d.kind !== 'package'
     && d.access !== 'private' && !String(d.name).startsWith('#'));
 }
@@ -21,7 +27,27 @@ export function organise(doclets) {
   }));
   const functions = doclets.filter((d) => d.kind === 'function' && !d.memberof);
   const types = doclets.filter((d) => d.kind === 'typedef');
-  return { classes, functions, types, byId };
+  const constants = doclets.filter((d) => d.kind === 'constant' && !d.memberof);
+  return { classes, functions, types, constants, byId };
+}
+
+// The docs are grouped by the part of the library an entry lives in (its src/ folder).
+const AREAS = [
+  ['src', 'Game'], ['game', 'Game'], ['scene', 'Rooms'], ['hit', 'Hotspots'], ['actor', 'Actors'], ['nav', 'Navigation'],
+  ['interact', 'Interaction'], ['script', 'Scripts'], ['dialogue', 'Dialogue'], ['ui', 'Screen'], ['audio', 'Audio'],
+  ['core', 'Core'], ['debug', 'Debug'],
+];
+export const AREA_ORDER = [...new Set(AREAS.map(([, label]) => label))];
+
+export function areaOf(doc) {
+  const folder = String(doc.meta?.path ?? '').split(/[\\/]/).at(-1);
+  return AREAS.find(([dir]) => dir === folder)?.[1] ?? 'Other';
+}
+
+// [[area, docs], ...] in the order of AREA_ORDER, leaving out empty areas.
+export function byArea(docs, get = (d) => d) {
+  const order = [...AREA_ORDER, 'Other'];
+  return order.map((area) => [area, docs.filter((d) => areaOf(get(d)) === area)]).filter(([, list]) => list.length);
 }
 
 export const typeText = (type) => (type?.names?.length ? type.names.join(' | ') : '');

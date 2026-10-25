@@ -1,3 +1,7 @@
+/**
+ * The library's version.
+ * @type {string}
+ */
 export const VERSION = '0.1.0';
 
 export * from './core/index.js';
@@ -16,13 +20,20 @@ export { skipButtonRect, hitSkipButton, drawSkipButton } from './ui/skip-button.
 export { InventoryBar, drawHoverLabel } from './ui/inventory-bar.js';
 export { clientToLogical } from './ui/pointer.js';
 export { drawDebugOverlay } from './debug/overlay.js';
+export { StateInspector } from './debug/inspector.js';
 export * from './game/index.js';
 
 import { Game } from './game/game.js';
 import { attachP5 } from './game/p5-binding.js';
 
-// p5 addon: adds the p5.clickery namespace, createGameCanvas() and createGame() to every
-// sketch (as global functions in global mode), and moves every game forward each frame.
+/**
+ * The p5 addon: adds the `p5.clickery` namespace, `createGameCanvas()` and `createGame()` to every sketch
+ * (as global functions in global mode), and moves every game forward each frame. The script tag
+ * registers it for you; with modules, use {@link registerClickery}.
+ * @param {Function} p5 The p5 class.
+ * @param {Object} fn The p5 prototype functions are added to.
+ * @param {Object} [lifecycles] p5's lifecycle hooks.
+ */
 export function clickeryAddon(p5, fn, lifecycles) {
   p5.clickery = { ...p5.clickery, version: VERSION };
 

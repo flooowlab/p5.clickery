@@ -2,7 +2,15 @@
 // add debugDraw(p) for the overlay. Game code never calls these directly, it
 // goes through Hotspot.hit().
 
-// Ray casting. Points are [[x, y], ...]; the edge counts as inside on the left/top only.
+/**
+ * Asks whether a point is inside a polygon (ray casting). A point on the edge counts as inside on the left and top only.
+ * @param {Array<Array<number>>} points The corners as `[x, y]` pairs.
+ * @param {number} x
+ * @param {number} y
+ * @returns {boolean}
+ * @example
+ * pointInPolygon([[0, 0], [10, 0], [10, 10], [0, 10]], 5, 5); // true
+ */
 export function pointInPolygon(points, x, y) {
   let inside = false;
   for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
@@ -13,6 +21,11 @@ export function pointInPolygon(points, x, y) {
   return inside;
 }
 
+/**
+ * A hit-test provider for a polygon.
+ * @param {Array<Array<number>>} points The corners. At least three.
+ * @returns {{kind: string, contains: function(number, number): boolean, debugDraw: function(Object): void}}
+ */
 export function polygonProvider(points) {
   if (!Array.isArray(points) || points.length < 3) throw new RangeError('polygon needs 3+ points');
   return {
@@ -26,7 +39,14 @@ export function polygonProvider(points) {
   };
 }
 
-// "#rrggbb" or "#rgb" to [r, g, b].
+/**
+ * Turns a colour written as `#rrggbb` or `#rgb` into `[r, g, b]`.
+ * @param {string} hex
+ * @returns {number[]} Three numbers from 0 to 255.
+ * @throws {TypeError} For anything that is not a hex colour.
+ * @example
+ * parseColor('#ff8000'); // [255, 128, 0]
+ */
 export function parseColor(hex) {
   const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex ?? '');
   if (!m) throw new TypeError(`bad colour "${hex}", expected #rrggbb`);
@@ -34,10 +54,19 @@ export function parseColor(hex) {
   return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
 }
 
-// Matches one colour in a hidden mask image. `pixels` is an ImageData-like
-// { data, width, height }, read once at load. The mask may have a different
-// resolution from the room, so room coordinates are scaled to it.
-// Export masks without antialiasing or colour management; `tolerance` is per channel.
+/**
+ * A hit-test provider that matches one colour in a hidden mask picture. Read the pixels once, at
+ * load, and keep them: reading them every frame is slow. The mask may have a different size from the
+ * room; positions are scaled. Export masks without antialiasing or colour management.
+ *
+ * @param {Object} options
+ * @param {{data: Uint8ClampedArray, width: number, height: number}} options.pixels The mask as `ImageData`.
+ * @param {string} options.color The colour that means this hotspot: `#rrggbb`.
+ * @param {number} [options.tolerance=4] How far each colour channel may differ.
+ * @param {number} [options.roomWidth] The room width the mask is scaled against. Default: the mask's own.
+ * @param {number} [options.roomHeight]
+ * @returns {{kind: string, contains: function(number, number): boolean, debugDraw: function(Object): void}}
+ */
 export function colorMaskProvider({ pixels, color, tolerance = 4, roomWidth, roomHeight }) {
   const [r, g, b] = parseColor(color);
   const { data, width, height } = pixels;
@@ -62,8 +91,16 @@ export function colorMaskProvider({ pixels, color, tolerance = 4, roomWidth, roo
   };
 }
 
-// Path2D based. `Path2D` and `ctx` default to the browser's; inject them to test.
-// Path data is in room coordinates (apply any SVG transform before exporting).
+/**
+ * A hit-test provider for an SVG path, using the browser's `Path2D`. Path data is in room
+ * coordinates, so apply any SVG transform before exporting.
+ *
+ * @param {Object} options
+ * @param {string} options.d The path data.
+ * @param {Function} [options.Path2D] Default: the browser's. Inject one to test without a browser.
+ * @param {Object} [options.ctx] A 2D context with `isPointInPath`. Default: an offscreen canvas.
+ * @returns {{kind: string, contains: function(number, number): boolean, debugDraw: function(Object): void}}
+ */
 export function svgProvider({ d, Path2D: PathClass = globalThis.Path2D, ctx }) {
   if (typeof d !== 'string' || d.trim() === '') throw new TypeError('svg provider needs path data');
   if (!PathClass) throw new Error('svg provider needs Path2D');
@@ -81,8 +118,14 @@ export function svgProvider({ d, Path2D: PathClass = globalThis.Path2D, ctx }) {
   };
 }
 
-// Finds <path> elements in SVG text and returns { key: d }, keyed by id and by
-// inkscape:label when present. Only plain `d` attributes are read.
+/**
+ * Finds the `<path>` elements in SVG text and returns their path data by `id`, and by
+ * `inkscape:label` when there is one. Only plain `d` attributes are read.
+ * @param {string} svgText
+ * @returns {Object<string, string>} `{ id: d }`.
+ * @example
+ * parseSvgPaths('<path id="crate" d="M0 0 L10 0 L10 10 Z"/>'); // { crate: 'M0 0 L10 0 L10 10 Z' }
+ */
 export function parseSvgPaths(svgText) {
   const paths = {};
   for (const [, attrs] of svgText.matchAll(/<path\b([^>]*)>/g)) {

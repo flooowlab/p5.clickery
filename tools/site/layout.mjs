@@ -4,8 +4,8 @@ import { escapeHtml } from './markdown.mjs';
 export const SECTIONS = [
   ['learn', 'Learn', 'learn/'],
   ['docs', 'Docs', 'docs/'],
+  ['tools', 'Tools', 'tools/'],
   ['examples', 'Examples', 'examples/'],
-  ['editor', 'Editor', 'tools/editor/'],
 ];
 
 // Runs before the page paints so the chosen theme does not flash.
