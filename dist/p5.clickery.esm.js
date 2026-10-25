@@ -1699,6 +1699,19 @@ var Actor = class {
   }
 };
 
+// src/actor/sheet.js
+function spriteFrames(sheet, frameWidth, frameHeight, { count } = {}) {
+  if (!(frameWidth > 0) || !(frameHeight > 0)) throw new RangeError(`spriteFrames needs a frame size above 0, got ${frameWidth} x ${frameHeight}`);
+  const columns = Math.floor(sheet.width / frameWidth);
+  const rows = Math.floor(sheet.height / frameHeight);
+  const total = Math.min(count ?? columns * rows, columns * rows);
+  const frames = [];
+  for (let i = 0; i < total; i++) {
+    frames.push(sheet.get(i % columns * frameWidth, Math.floor(i / columns) * frameHeight, frameWidth, frameHeight));
+  }
+  return frames;
+}
+
 // src/interact/inventory.js
 var Inventory = class {
   constructor({ state, events, items = {}, recipes = [] }) {
@@ -3820,6 +3833,11 @@ var Game = class {
    */
   debug = false;
   /**
+   * `true` once p5 has started calling `draw()`, which is when p5 takes over moving the game forward.
+   * @type {boolean}
+   */
+  drawnByP5 = false;
+  /**
    * The state inspector, once it has been opened with the `inspectorKey` option (or made by hand).
    * @type {StateInspector|null}
    */
@@ -3834,11 +3852,28 @@ var Game = class {
    * @type {LetterboxScaler|undefined}
    */
   scaler;
+  /**
+   * The room pictures that are loaded, by room id: `{ 'hall.png': image }`, under the names the room uses
+   * for its `background` and `layers`. The game loads them in `start()`. A picture already in here is not
+   * loaded again, so you can put your own (for example one made with `createGraphics`) before starting.
+   * @type {Map<string, Object<string, Object>>}
+   */
   images = /* @__PURE__ */ new Map();
-  // room id -> { image name: p5.Image }, filled by the p5 binding
+  /**
+   * The inventory pictures that are loaded, by item id (the `image` of an item).
+   * @type {Object<string, Object>}
+   */
   itemImages = {};
   roomURLs = /* @__PURE__ */ new Map();
   // room id -> URL of its file, so its pictures load relative to it
+  /**
+   * The files that hotspots need, loaded in `start()`: for a `colorMask` hotspot its mask picture's pixels,
+   * for an `svg` hotspot with a file its text. Keys are `'<room id>:<name as the room writes it>'`, values
+   * `{ pixels: { data, width, height } }` or `{ text }`. A game made with {@link createGame} fills it by
+   * itself; fill it by hand when you use `new Game` with these hotspots.
+   * @type {Map<string, Object>}
+   */
+  hotspotFiles = /* @__PURE__ */ new Map();
   #roomSources = [];
   #ready = null;
   constructor(options = {}) {
@@ -3898,7 +3933,7 @@ var Game = class {
       scheduler: this.scheduler
     });
     this.events.on("room:enter", ({ room, start }) => {
-      const hotspots = createHotspots(room);
+      const hotspots = createHotspots(room, this.#hotspotAssets(room));
       applyHotspotState(this.state, room.id, hotspots);
       this.hover.setHotspots(hotspots);
       this.hero.navigator = Navigator.fromRoom(room);
@@ -3959,7 +3994,11 @@ var Game = class {
     return this.#ready;
   }
   /**
-   * Loads everything the game needs, then enters a room.
+   * Loads everything the game needs (room files, pictures, sounds), then enters a room.
+   *
+   * It resolves once the room is entered and its `onEnter` and `onEntered` hooks have finished, so an
+   * opening cutscene in `onEntered` is part of it. p5 does not start calling `draw()` until an async
+   * `setup()` has finished, so until then the game steps and draws itself: awaiting this in `setup()` is fine.
    * @param {string} [roomId] The room to start in. Default: the first one added.
    * @param {string} [startName='default'] Which of the room's `starts` the hero appears at.
    * @returns {Promise<void>} Resolves once the room is entered.
@@ -4141,6 +4180,15 @@ var Game = class {
     return true;
   }
   // ---- internals ----
+  // What createHotspots needs to read mask pictures and svg files (see hotspotFiles).
+  #hotspotAssets(room) {
+    const file = (name, what) => {
+      const found = this.hotspotFiles.get(`${room.id}:${name}`);
+      if (!found) throw new Error(`room "${room.id}": ${what} "${name}" is not loaded (a game loads these in start())`);
+      return found;
+    };
+    return { pixels: (name) => file(name, "the mask picture").pixels, text: (name) => file(name, "the svg file").text };
+  }
   #storage() {
     return this.options.storage ?? globalThis.localStorage;
   }
@@ -4184,6 +4232,30 @@ var Game = class {
   }
 };
 
+// src/game/setup-driver.js
+function driveUntilDrawing(game, { request = globalThis.requestAnimationFrame?.bind(globalThis) } = {}) {
+  if (!request) return () => {
+  };
+  let stopped = false;
+  let last = null;
+  const frame = (now) => {
+    if (stopped || game.drawnByP5) return;
+    game.update(last === null ? 0 : now - last);
+    last = now;
+    try {
+      game.draw?.();
+    } catch (err) {
+      console.warn("p5.clickery: could not draw the game while setup() was running:", err.message);
+      return;
+    }
+    request(frame);
+  };
+  request(frame);
+  return () => {
+    stopped = true;
+  };
+}
+
 // src/game/p5-binding.js
 function attachP5(game, p, { canvas = true, parent = null, fit = true } = {}) {
   const { width, height } = game.options;
@@ -4204,6 +4276,7 @@ function attachP5(game, p, { canvas = true, parent = null, fit = true } = {}) {
   game.drawHero ??= drawHeroDefault;
   game.drawSpeech ??= drawSpeechDefault;
   (p._clickeryGames ??= /* @__PURE__ */ new Set()).add(game);
+  driveUntilDrawing(game);
   return game;
 }
 function prepareContainer(el, width, height) {
@@ -4275,9 +4348,29 @@ async function loadImages(game, p) {
     const images = game.images.get(id) ?? {};
     for (const name of names) images[name] ??= await load(name, game.roomURLs.get(id));
     game.images.set(id, images);
+    await loadHotspotFiles(game, id, room, load);
   }
   for (const [id, item] of Object.entries(game.inventory.items)) {
     if (item.image && !game.itemImages[id]) game.itemImages[id] = await load(item.image);
+  }
+}
+async function loadHotspotFiles(game, roomId, room, load) {
+  for (const def of room.hotspots ?? []) {
+    if (def.provider === "colorMask" && def.mask && !game.hotspotFiles.has(`${roomId}:${def.mask}`)) {
+      const img = await load(def.mask, game.roomURLs.get(roomId));
+      if (!img) continue;
+      img.loadPixels();
+      game.hotspotFiles.set(`${roomId}:${def.mask}`, { pixels: { data: img.pixels, width: img.width, height: img.height } });
+    } else if (def.provider === "svg" && def.svg && !def.d && !game.hotspotFiles.has(`${roomId}:${def.svg}`)) {
+      try {
+        const url = new URL(def.svg, game.roomURLs.get(roomId) ?? globalThis.document?.baseURI).href;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(String(response.status));
+        game.hotspotFiles.set(`${roomId}:${def.svg}`, { text: await response.text() });
+      } catch (err) {
+        console.warn(`could not load the svg file "${def.svg}": ${err.message}`);
+      }
+    }
   }
 }
 function drawGame(game, p) {
@@ -4379,7 +4472,10 @@ function clickeryAddon(p5, fn, lifecycles) {
   };
   if (lifecycles) {
     lifecycles.predraw = function() {
-      for (const game of this._clickeryGames ?? []) game.update(this.deltaTime);
+      for (const game of this._clickeryGames ?? []) {
+        game.drawnByP5 = true;
+        game.update(this.deltaTime);
+      }
     };
   }
   fn.createGameCanvas = function(width, height) {
@@ -4488,6 +4584,7 @@ export {
   skipButtonRect,
   sortByBaseline,
   splitSpeaker,
+  spriteFrames,
   startPosition,
   svgProvider,
   toRunner
