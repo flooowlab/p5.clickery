@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>p5.clickery room preview</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body { display: flex; flex-direction: column; background: #111; color: #ddd; font: 13px system-ui, sans-serif; }
+    #stage { flex: 1; min-height: 0; background: #000; touch-action: none; }
+    #bar { padding: 6px 12px; background: #1b1e26; }
+    #bar span { opacity: .75; }
+    #error { color: #ff9b9b; padding: 12px; }
+  </style>
+  <script src="../../node_modules/p5/lib/p5.min.js"></script>
+</head>
+<body>
+  <div id="stage"></div>
+  <div id="bar">Click the floor to walk, click a hotspot to use it, right-click to look. <b>D</b> toggles the debug outlines.
+    <span id="info"></span></div>
+  <script type="module" src="preview.js"></script>
+</body>
+</html>

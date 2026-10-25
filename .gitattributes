@@ -1,0 +1,2 @@
+# Built files: always LF, so the freshness check (tools/build.mjs --check) matches on every OS.
+dist/** text eol=lf

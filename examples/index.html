@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>p5.clickery examples</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; background: #111318; color: #d9dce4; font: 15px/1.5 system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { font-size: 24px; margin: 0 0 4px; }
+    p.lead { margin: 0 0 24px; color: #9aa1b2; }
+    ol { list-style: none; padding: 0; margin: 0; counter-reset: ex; }
+    li { counter-increment: ex; margin: 0 0 12px; }
+    a.card { display: block; padding: 12px 16px; border: 1px solid #2c313d; border-radius: 8px; background: #181b22; color: inherit; text-decoration: none; }
+    a.card:hover { border-color: #5b7fd6; background: #1d2130; }
+    a.card b { font-size: 16px; }
+    a.card b::before { content: counter(ex) ". "; color: #6c7899; }
+    .what { display: block; color: #9aa1b2; margin-top: 2px; }
+    .shows { display: block; font-size: 13px; color: #7f8799; margin-top: 4px; }
+    h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .06em; color: #8f98ad; margin: 28px 0 10px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>p5.clickery examples</h1>
+    <p class="lead">In learning order. Each one is a single folder you can read top to bottom.</p>
+    <ol>
+      <li><a class="card" href="quickstart/"><b>Quick start</b>
+        <span class="what">The smallest working game: one room, a hero, one sign, about 40 lines. Start here. Runs by opening the file.</span>
+        <span class="shows">createGame, rooms as data, game.on, text keys, game.draw.</span></a></li>
+      <li><a class="card" href="adventure/"><b>Adventure</b>
+        <span class="what">A puzzle with items and combining, an opening cutscene, a guard to talk to, music, sound, settings, and scaling to any window or phone.</span>
+        <span class="shows">createGame with items, recipes, a cutscene, game.talk in Markdown, Twine or Ink (add <code>?adapter=twine</code> or <code>?adapter=ink</code>), sounds, a settings panel, custom drawing.</span></a></li>
+      <li><a class="card" href="lighthouse/"><b>The Lighthouse</b>
+        <span class="what">A complete small game: three rooms, a puzzle, an Ink conversation, a skippable ending, save and load.</span>
+        <span class="shows">How a bigger game is organised with modules: data files, one script file per room, the game's logic in its own module (also the integration test).</span></a></li>
+    </ol>
+    <h2>Under the hood</h2>
+    <p class="lead">The parts that createGame() puts together, used one by one: for when you want to change how something works.</p>
+    <ol>
+      <li><a class="card" href="core/"><b>Core</b>
+        <span class="what">The game loop, timers and the state store on their own, with save, load and export.</span>
+        <span class="shows">createCore, scheduler, state, saveToSlot / loadFromSlot.</span></a></li>
+      <li><a class="card" href="rooms/"><b>Rooms</b>
+        <span class="what">The parts createGame uses, put together by hand: two scrolling rooms, an obstacle to walk around, depth scaling and three kinds of hotspot. Press D for the debug overlay.</span>
+        <span class="shows">SceneManager, camera, Navigator, polygon / svg / colorMask hotspots, sorting by baseline.</span></a></li>
+    </ol>
+    <h2>Tool</h2>
+    <ol>
+      <li><a class="card" href="../tools/editor/"><b>Room editor</b>
+        <span class="what">Load a room picture, draw hotspots and floors (or pick them with the magic wand), export the room JSON and preview it in the engine.</span></a></li>
+    </ol>
+  </main>
+</body>
+</html>

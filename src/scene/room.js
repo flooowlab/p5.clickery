@@ -4,6 +4,7 @@
 // {
 //   "id": "hall", "width": 960, "height": 360,
 //   "background": "hall.png",            // or "color": "#223344" for a flat fill
+//   "music": "hall-theme",               // optional: sound id; null = silence, omitted = keep playing
 //   "layers": [{ "image": "far.png", "parallax": 0.5, "depth": "bg" },
 //              { "image": "pillar.png", "depth": "fg" }],
 //   "hotspots": [{ "id": "door", "name": "room.hall.door", "provider": "polygon", "points": [[10,10],...] }],
@@ -65,6 +66,7 @@ export function parseRoom(json) {
     height: json.height,
     background: json.background ?? null,
     color: json.color ?? '#000000',
+    music: json.music, // sound id; omitted keeps the current music, null stops it
     layers,
     hotspots,
     walkable,

@@ -11,8 +11,24 @@ import { parseTags, splitSpeaker } from './common.js';
 //     lands in line.tags (for example sfx). Without a speaker tag a "Name: " prefix is used.
 //   - externals: { giveItem: (id) => ... } are bound as ink EXTERNAL functions.
 //   - sync: names of ink variables mirrored to the state store ("vars.<name>"), both ways.
-export function createInkRunner(story, { state = null, sync = [], externals = {} } = {}) {
-  for (const [name, fn] of Object.entries(externals)) story.BindExternalFunction(name, fn);
+//
+// A runner is one conversation. Creating a new runner for the same Story replaces the
+// previous one: it is detached first (externals, variable links), then the story is
+// reset to its beginning (pass `reset: false` to carry on a story that is part-way
+// through), then `sync` variables are restored from the state store. So a game just
+// calls createInkRunner(story, ...) every time the player starts talking.
+const attached = new WeakMap(); // story -> the runner currently linked to it
+
+export function createInkRunner(story, { state = null, sync = [], externals = {}, reset = true } = {}) {
+  attached.get(story)?.dispose();
+  if (reset) story.ResetState();
+  const cleanups = [];
+
+  for (const [name, fn] of Object.entries(externals)) {
+    try { story.UnbindExternalFunction(name); } catch { /* it was not bound yet */ }
+    story.BindExternalFunction(name, fn);
+    cleanups.push(() => { try { story.UnbindExternalFunction(name); } catch { /* already gone */ } });
+  }
 
   const ink = story.variablesState;
   if (state) {
@@ -20,12 +36,14 @@ export function createInkRunner(story, { state = null, sync = [], externals = {}
       const saved = state.get(`vars.${name}`);
       if (saved !== undefined) ink[name] = saved;
       else state.set(`vars.${name}`, ink[name]);
-      story.ObserveVariable(name, (_, value) => {
+      const observer = (_, value) => {
         if (state.get(`vars.${name}`) !== value) state.set(`vars.${name}`, value);
-      });
-      state.watch(`vars.${name}`, (value) => {
+      };
+      story.ObserveVariable(name, observer);
+      cleanups.push(() => story.RemoveVariableObserver(observer, name));
+      cleanups.push(state.watch(`vars.${name}`, (value) => {
         if (value !== undefined && ink[name] !== value) ink[name] = value;
-      });
+      }));
     }
   }
 
@@ -35,9 +53,16 @@ export function createInkRunner(story, { state = null, sync = [], externals = {}
     has: (_, k) => ink[String(k)] !== undefined,
   });
 
-  return {
+  const runner = {
     vars,
     story,
+
+    // Detach from the story and the state store. Called automatically when a newer
+    // runner is created for the same story.
+    dispose() {
+      for (const undo of cleanups.splice(0)) undo();
+      if (attached.get(story) === runner) attached.delete(story);
+    },
 
     get done() {
       return !story.canContinue && story.currentChoices.length === 0;
@@ -66,6 +91,8 @@ export function createInkRunner(story, { state = null, sync = [], externals = {}
       story.ChooseChoiceIndex(i);
     },
   };
+  attached.set(story, runner);
+  return runner;
 }
 
 // Ready-made EXTERNAL functions for the usual game hooks:
