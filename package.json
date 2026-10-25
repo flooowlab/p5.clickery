@@ -47,7 +47,8 @@
     "pretest": "node tools/build.mjs",
     "test": "node --test \"test/**/*.test.js\"",
     "prepublishOnly": "npm test",
-    "prepare": "node tools/setup-git-hooks.mjs"
+    "prepare": "node tools/setup-git-hooks.mjs",
+    "build:site": "node tools/build.mjs && node tools/build-site.mjs"
   },
   "peerDependencies": {
     "p5": ">=2.0.0 <3"
@@ -55,6 +56,8 @@
   "devDependencies": {
     "esbuild": "^0.28.2",
     "inkjs": "^2.4.0",
+    "jsdoc": "^4.0.5",
+    "marked": "^18.1.1",
     "p5": "2.3.4"
   }
 }
