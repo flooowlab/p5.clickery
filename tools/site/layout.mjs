@@ -8,6 +8,11 @@ export const SECTIONS = [
   ['examples', 'Examples', 'examples/'],
 ];
 
+// Changes with every build. It is added to the addresses of the site's scripts and styles, and of the
+// library the lessons run, so a browser that kept an older copy (GitHub Pages lets it for ten minutes)
+// fetches the new one instead of mixing a new page with an old library.
+export const BUILD = Date.now().toString(36);
+
 // Runs before the page paints so the chosen theme does not flash.
 const THEME_BOOT = `try{var t=localStorage.getItem('clickery-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}`;
 
@@ -23,7 +28,7 @@ export function page({ title, root, section = '', body, head = '', scripts = '',
 <title>${escapeHtml(title)}</title>
 ${description ? `<meta name="description" content="${escapeHtml(description)}">` : ''}
 <script>${THEME_BOOT}</script>
-<link rel="stylesheet" href="${root}assets/site.css">
+<link rel="stylesheet" href="${root}assets/site.css?v=${BUILD}">
 ${head}
 </head>
 <body class="section-${section}">
@@ -33,7 +38,7 @@ ${head}
   <button class="theme" type="button" id="theme" aria-label="Switch between light and dark">◐</button>
 </header>
 ${body}
-<script src="${root}assets/theme.js"></script>
+<script src="${root}assets/theme.js?v=${BUILD}"></script>
 ${scripts}
 </body>
 </html>

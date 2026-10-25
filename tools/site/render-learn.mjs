@@ -1,6 +1,6 @@
 // The Learn section: an index of every function with the page that teaches it, and one paged
 // topic per lesson file, each page with an editable sketch next to a live canvas.
-import { page } from './layout.mjs';
+import { page, BUILD } from './layout.mjs';
 import { coverageIndex } from './lessons.mjs';
 import { escapeHtml, renderMarkdown } from './markdown.mjs';
 
@@ -41,7 +41,7 @@ function topicPage(lessons, lesson, hrefOf) {
   return page({
     title: `${lesson.title} · Learn · p5.clickery`, root: '../', section: 'learn', description: lesson.blurb,
     body: `<main class="learn-topic">${tabs(lessons, lesson.slug)}<div class="topic"><aside class="side"><p class="group">${escapeHtml(lesson.title)}</p><ol>${list}</ol></aside><div class="pages">${sections}</div></div></main>`,
-    scripts: '<script src="../assets/learn.js"></script>',
+    scripts: `<script src="../assets/learn.js?v=${BUILD}" data-build="${BUILD}"></script>`,
   });
 }
 

@@ -2,6 +2,7 @@
 const sections = [...document.querySelectorAll('.lesson')];
 const links = [...document.querySelectorAll('.side a[data-page]')];
 const site = new URL('../', location.href).href;
+const build = document.currentScript?.dataset.build ?? ''; // makes a browser fetch the library again after a new build
 const ran = new Set();
 
 // The sketch runs in its own page with p5 and p5.clickery loaded, so a mistake cannot break this one.
@@ -9,8 +10,8 @@ function frameSource(code) {
   const safe = code.replace(/<\/script/gi, '<\\/script');
   return `<!doctype html><html><head><meta charset="utf-8">
 <style>html,body{margin:0;height:100%;background:#14161c;overflow:hidden}</style>
-<script src="${site}vendor/p5.min.js"><\/script>
-<script src="${site}dist/p5.clickery.min.js"><\/script>
+<script src="${site}vendor/p5.min.js?v=${build}"><\/script>
+<script src="${site}dist/p5.clickery.min.js?v=${build}"><\/script>
 <script>
   // in a function, so none of these names can clash with the lesson's own
   (() => {
