@@ -28,10 +28,45 @@ export function attachP5(game, p, { canvas = true, parent = null, fit = true } =
   game.audio?.unlockOnGesture(globalThis.window ?? globalThis);
 
   game.loadAssets = () => loadImages(game, p);
+  /**
+   * Draws everything: the room, the hero, subtitles, choices, the inventory bar, hover label and
+   * fades. Call it in `draw()`. Added to the game by {@link createGame}.
+   * @function Game#draw
+   * @example
+   * function draw() {
+   *   game.draw();
+   * }
+   */
   game.draw = () => drawGame(game, p);
-  // The parts of game.draw(); replace any of them with your own function.
+  /**
+   * Draws the room's floors, obstacles and hotspots in room coordinates. Replace it to draw your own
+   * art; the default is {@link drawRoomShapes}, so a replacement can call it and add to it.
+   * @function Game#drawRoom
+   * @param {Object} p The p5 sketch.
+   * @param {Object} room The current room.
+   * @param {Game} game
+   * @example
+   * game.drawRoom = (p, room, game) => {
+   *   p.background(30, 40, 60);
+   *   p5.clickery.drawRoomShapes(p, room, game);
+   * };
+   */
   game.drawRoom ??= drawRoomShapes;
+  /**
+   * Draws the hero, feet at `(hero.x, hero.y)`. Replace it to draw your own character; the default is {@link drawHeroDefault}.
+   * @function Game#drawHero
+   * @param {Object} p The p5 sketch.
+   * @param {Actor} hero
+   * @param {Game} game
+   */
   game.drawHero ??= drawHeroDefault;
+  /**
+   * Draws the line the hero is saying, while there is one. The default is {@link drawSpeechDefault}.
+   * @function Game#drawSpeech
+   * @param {Object} p The p5 sketch.
+   * @param {Actor} hero
+   * @param {Game} game
+   */
   game.drawSpeech ??= drawSpeechDefault;
 
   (p._clickeryGames ??= new Set()).add(game);

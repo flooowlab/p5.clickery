@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- A website for GitHub Pages: **Learn** (live, editable lessons) and **Docs** (generated from JSDoc comments in `src/`). `npm run build:site` builds it into `_site/`.
+- JSDoc comments on `createGame`, `createGameCanvas`, `registerClickery`, `GameOptions` and every `Game` member. No behaviour change; `Game` gains the declared properties `actors` and `scaler` (both were already used).
+- `GAME_DEFAULTS` moved to `src/game/options.js` (still exported from the same place).
+
 ## 0.1.0 (2026-10-19)
 
 First release. Everything below is new.

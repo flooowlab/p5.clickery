@@ -26,8 +26,26 @@ import { attachP5 } from './game/p5-binding.js';
 export function clickeryAddon(p5, fn, lifecycles) {
   p5.clickery = { ...p5.clickery, version: VERSION };
 
-  // Creates a whole game with sensible defaults, its canvas, input and drawing.
-  // See GAME_DEFAULTS in src/game/game.js for the options.
+  /**
+   * Creates a whole game with sensible defaults: its canvas (scaled to fit the window), mouse,
+   * touch and keyboard input, and drawing. A p5 function once p5.clickery is loaded, or
+   * `p.createGame` in instance mode.
+   *
+   * @function createGame
+   * @param {GameOptions} [options] See {@link GameOptions}. Everything has a default.
+   * @returns {Game} The game. Call `game.start()` in `setup()` and `game.draw()` in `draw()`.
+   * @example
+   * let game;
+   *
+   * async function setup() {
+   *   game = createGame({ rooms: [yard] });
+   *   await game.start();
+   * }
+   *
+   * function draw() {
+   *   game.draw();
+   * }
+   */
   fn.createGame = function (options = {}) {
     return attachP5(new Game(options), this, options);
   };
@@ -39,7 +57,15 @@ export function clickeryAddon(p5, fn, lifecycles) {
     };
   }
 
-  // Canvas with a fixed logical size. Scaling it to the window is handled in P8.
+  /**
+   * A normal p5 canvas that also remembers its logical size. {@link createGame} calls it for you;
+   * use it only when you build a game from the parts yourself.
+   *
+   * @function createGameCanvas
+   * @param {number} width Whole number of pixels.
+   * @param {number} height Whole number of pixels.
+   * @returns {Object} The p5 renderer. Throws a `RangeError` for anything but positive whole numbers.
+   */
   fn.createGameCanvas = function (width, height) {
     if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) {
       throw new RangeError(`createGameCanvas needs positive integer sizes, got ${width}x${height}`);
@@ -49,7 +75,14 @@ export function clickeryAddon(p5, fn, lifecycles) {
   };
 }
 
-// Call once, before creating any p5 instance.
+/**
+ * Registers p5.clickery with p5. The script tag does this by itself; with ES modules call it
+ * once, before `new p5(...)`.
+ * @param {Function} p5 The p5 class.
+ * @example
+ * import { registerClickery } from './p5.clickery.esm.js';
+ * registerClickery(p5);
+ */
 export function registerClickery(p5) {
   p5.registerAddon(clickeryAddon);
 }

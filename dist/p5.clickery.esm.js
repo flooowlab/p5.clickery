@@ -2760,39 +2760,44 @@ function toRunner(source, { state, inventory, Story, sync, externals = {}, start
   return createMarkdownRunner(source, { state, start });
 }
 
-// src/game/game.js
+// src/game/options.js
 var GAME_DEFAULTS = {
   width: 640,
   height: 360,
   rooms: [],
-  // room objects or URLs of room JSON files
   strings: {},
-  // text keys -> text (added to the built-in English strings)
   language: "en",
   items: {},
-  // id -> 'display text' or { name, text, image }
   recipes: [],
   sounds: {},
-  // sound id -> URL
   sfx: {},
-  // event name -> sound id (see AudioManager.attach)
   hero: {},
-  // Actor options: speed, directions, animations, x, y
   mode: "smart",
-  // or 'verbs'
   fadeMs: 300,
   followHero: true,
-  // the camera keeps the hero in view in rooms wider than the screen
   debugKey: "d",
-  // toggles the outlines of hotspots and floors (null: off)
   saveSlot: "game",
   storage: void 0,
-  // where saves and settings go (default: localStorage)
   Story: void 0
-  // inkjs's Story class, if ink.js is not loaded as a script
 };
+
+// src/game/game.js
 var Game = class {
+  /**
+   * Shows the outlines of hotspots and floors while `true`. The `debugKey` (default `d`) toggles it.
+   * @type {boolean}
+   */
   debug = false;
+  /**
+   * Extra things drawn in depth order with the hero: objects with a `baseline` (the y of their feet) and a `draw(p)` function.
+   * @type {Array<{baseline: number, draw: function(Object): void}>}
+   */
+  actors = [];
+  /**
+   * Fits the canvas to the window with letterbox bars. Set when the game is attached to p5.
+   * @type {LetterboxScaler|undefined}
+   */
+  scaler;
   images = /* @__PURE__ */ new Map();
   // room id -> { image name: p5.Image }, filled by the p5 binding
   itemImages = {};
@@ -2804,7 +2809,11 @@ var Game = class {
     const o = { ...GAME_DEFAULTS, ...options, hero: { ...GAME_DEFAULTS.hero, ...options.hero } };
     this.options = o;
     const core = createCore();
-    Object.assign(this, { core, events: core.events, state: core.state, scheduler: core.scheduler, i18n: core.i18n });
+    this.core = core;
+    this.events = core.events;
+    this.state = core.state;
+    this.scheduler = core.scheduler;
+    this.i18n = core.i18n;
     this.i18n.language = o.language;
     this.i18n.add("en", defaultStrings);
     this.i18n.add(o.language, o.strings);
@@ -2868,81 +2877,225 @@ var Game = class {
     });
   }
   // ---- building the game ----
-  // A room object, or the URL of a room JSON file (loaded by start()).
+  /**
+   * Adds a room after the game was made. A URL is fetched by {@link Game#start}.
+   * @param {Object|string} source A room object, or the URL of a room JSON file.
+   * @returns {Game} The game, so calls can be chained.
+   * @example
+   * game.addRoom({ id: 'cellar', width: 640, height: 360, color: '#222', starts: { default: { x: 100, y: 300 } }, walkable: [] });
+   */
   addRoom(source) {
     if (typeof source === "string") this.#roomSources.push({ url: source });
     else this.rooms.set(source.id, source);
     this.#ready = null;
     return this;
   }
-  // The script for an object, item or room: { onInteract, onLook, onUse, onEnter, onEntered, onExit }.
+  /**
+   * Sets what happens when the player acts on a hotspot, an item or a room. A handler gets a
+   * context `ctx` with `ctx.say(key)`, `ctx.hero`, `ctx.inventory`, `ctx.state`, `ctx.item`
+   * and `ctx.setEnabled(id, on)`. Returning `false` from a handler gives the default answer.
+   *
+   * @param {string} id The id of a hotspot, an item or a room.
+   * @param {Object} handlers Any of `onInteract` (click), `onLook` (right-click or long press), `onUse` (an item was used on it), `onEnter` (a room, screen still black), `onEntered` (a room, after the fade-in) and `onExit`.
+   * @returns {Game} The game, so calls can be chained.
+   * @example
+   * game.on('door', {
+   *   onLook: (ctx) => ctx.say('door.look'),
+   *   onUse: async (ctx) => {
+   *     if (ctx.item !== 'key') return false;
+   *     ctx.inventory.remove('key');
+   *     game.flag('doorOpen', true);
+   *     await ctx.say('door.opens');
+   *   },
+   * });
+   */
   on(id, handlers) {
     this.scripts.add(id, handlers);
     return this;
   }
-  // Loads room files, pictures and sounds once. start() calls it for you.
+  /**
+   * Loads room files, pictures and sounds once. {@link Game#start} calls it for you; call it
+   * yourself to load while a title screen shows.
+   * @returns {Promise<void>}
+   */
   preload() {
     this.#ready ??= this.#load();
     return this.#ready;
   }
-  // Loads everything, then enters the room (default: the first one added).
+  /**
+   * Loads everything the game needs, then enters a room.
+   * @param {string} [roomId] The room to start in. Default: the first one added.
+   * @param {string} [startName='default'] Which of the room's `starts` the hero appears at.
+   * @returns {Promise<void>} Resolves once the room is entered.
+   * @example
+   * async function setup() {
+   *   game = createGame({ rooms: [yard] });
+   *   await game.start();
+   * }
+   */
   async start(roomId, startName = "default") {
     await this.preload();
     const first = roomId ?? this.rooms.keys().next().value;
     if (first === void 0) throw new Error("add a room first: createGame({ rooms: [...] })");
     return this.scene.goTo(first, startName);
   }
+  /**
+   * Changes room with a fade. The state remembers each room, so it is as you left it when you come back.
+   * @param {string} roomId The room to go to.
+   * @param {string} [startName='default'] Which of that room's `starts` the hero appears at.
+   * @returns {Promise<void>} Resolves when the new room has faded in. Throws if a change is already running.
+   * @example
+   * game.on('door', { onInteract: () => game.goTo('hall', 'fromYard') });
+   */
   goTo(roomId, startName = "default") {
     return this.scene.goTo(roomId, startName);
   }
   // ---- playing ----
+  /**
+   * The room the hero is in, or `undefined` before {@link Game#start}.
+   * @type {Object|undefined}
+   */
   get room() {
     return this.scene.room;
   }
-  // The hero says a line (a text key). Resolves when the line is over.
+  /**
+   * The hero says a line. Everything the player reads is a text key from `strings`; a key that
+   * is missing shows as `[key]`, which is easy to spot.
+   * @param {string} key A text key, such as `'sign.look'`.
+   * @param {Object} [options] Passed to {@link Actor#say}.
+   * @returns {Promise<void>} Resolves when the line is over (or the player skips it).
+   * @example
+   * await game.say('sign.look');
+   */
   say(key, options) {
     return this.hero.say(key, options);
   }
-  // Plays a conversation: Markdown or Twee text, Twison, an Ink story or compiled Ink JSON, or a runner.
-  // options: sync (Ink variables to save), externals (Ink EXTERNAL functions), start (Markdown section).
+  /**
+   * Plays a conversation. The format is detected: Markdown text, Twee 3 text (starts with `::`),
+   * Twison JSON, compiled Ink JSON or an inkjs `Story`, or a ready-made dialogue runner.
+   * Ink variables are saved with the game, and Ink can call `giveItem("key")` and `setFlag("name")`.
+   *
+   * @param {string|Object} source The conversation.
+   * @param {Object} [options]
+   * @param {string[]} [options.sync] Ink only: which variables to keep in the state (default: all).
+   * @param {Object<string,Function>} [options.externals] Ink only: extra EXTERNAL functions.
+   * @param {string} [options.start] Markdown only: the section to begin with.
+   * @returns {Promise<void>} Resolves when the conversation ends.
+   * @example
+   * await game.talk(`
+   * # start
+   * Guard: Halt! Who goes there?
+   * * Just me -> me
+   * * A friend -> friend
+   *
+   * # me
+   * Guard: Move along, then.
+   * -> END
+   *
+   * # friend
+   * Guard: Any friend of the lighthouse is a friend of mine.
+   * -> END
+   * `);
+   */
   talk(source, options = {}) {
     const runner = toRunner(source, { state: this.state, inventory: this.inventory, Story: this.options.Story, ...options });
     return this.dialogue.play(runner);
   }
-  // Runs a cutscene: input is locked and the player can skip it.
+  /**
+   * Runs a cutscene: the player cannot act, and a Skip button (or Escape) ends it early, jumping
+   * the hero and the fade to where they would have ended up. The script's state changes still
+   * happen, so a skipped cutscene ends in the same state as a played one.
+   * @param {function(Object): Promise<*>} script An async function. It gets the cutscene controller `cs`; `cs.label('name')` marks a place that `skip('name')` can stop at.
+   * @param {Object} [options]
+   * @param {boolean} [options.skippable=true] `false` hides the Skip button.
+   * @returns {Promise<*>} Resolves with the script's result when it ends or is skipped.
+   * @example
+   * await game.cutscene(async () => {
+   *   await game.hero.walkTo({ x: 300, y: 300 });
+   *   await game.say('intro.hello');
+   * });
+   */
   cutscene(script, options) {
     return this.cutscenes.run(script, options);
   }
-  // flag('doorOpen') reads a flag; flag('doorOpen', true) sets it. Flags are saved with the game.
+  /**
+   * Reads or sets a yes/no fact about the game. Flags are saved with the game.
+   * @param {string} name The flag's name. Do not put dots in it.
+   * @param {boolean} [value] Given: the flag is set to it. Left out: the flag is read.
+   * @returns {boolean} The flag's value (`false` if it was never set).
+   * @example
+   * if (!game.flag('doorOpen')) await game.say('door.locked');
+   * game.flag('doorOpen', true);
+   */
   flag(name, value) {
     if (value === void 0) return this.state.get(`flags.${name}`, false);
     this.state.set(`flags.${name}`, value);
     return value;
   }
+  /**
+   * Puts an item in the inventory.
+   * @param {string} item An id from the `items` option.
+   * @returns {boolean} `true`, or `false` if it was already carried.
+   * @example
+   * game.give('key');
+   */
   give(item) {
     return this.inventory.give(item);
   }
+  /**
+   * Removes an item from the inventory.
+   * @param {string} item An id from the `items` option.
+   * @returns {boolean} `true`, or `false` if it was not carried.
+   */
   take(item) {
     return this.inventory.remove(item);
   }
+  /**
+   * Asks whether an item is carried.
+   * @param {string} item An id from the `items` option.
+   * @returns {boolean}
+   * @example
+   * if (game.has('key')) await game.say('door.unlock');
+   */
   has(item) {
     return this.inventory.has(item);
   }
+  /**
+   * The live hotspot of the current room, for example to switch it off with `.enabled = false`.
+   * @param {string} id The hotspot's id.
+   * @returns {Hotspot|null} `null` if the current room has no such hotspot.
+   */
   hotspot(id) {
     return this.hover.hotspots.find((h) => h.id === id) ?? null;
   }
-  // One step of game time. With createGame() p5 calls this every frame.
+  /**
+   * Moves the game forward one step. With {@link createGame}, p5 calls this every frame, so you
+   * only call it yourself in tests or in a game without p5.
+   * @param {number} dt Milliseconds since the last step. Capped at 100.
+   */
   update(dt) {
     const step = Math.min(Math.max(dt || 0, 0), 100);
     this.scheduler.update(step);
     this.events.emit("update", step);
   }
   // ---- saving ----
+  /**
+   * Saves the game: the state (flags, inventory, current room) and where the hero stands.
+   * @param {string} [slot] Default: the `saveSlot` option.
+   * @example
+   * game.save();
+   */
   save(slot = this.options.saveSlot) {
     this.state.set("hero", this.hero.toJSON());
     saveToSlot(this.state, slot, this.#storage());
   }
-  // Returns false when nothing is saved in that slot.
+  /**
+   * Loads a saved game and re-enters its room.
+   * @param {string} [slot] Default: the `saveSlot` option.
+   * @returns {Promise<boolean>} `false` when nothing is saved in that slot.
+   * @example
+   * if (!(await game.load())) await game.start();
+   */
   async load(slot = this.options.saveSlot) {
     await this.preload();
     if (!loadFromSlot(this.state, slot, this.#storage())) return false;
