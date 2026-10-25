@@ -48,6 +48,11 @@ export class Game {
    */
   debug = false;
   /**
+   * `true` once p5 has started calling `draw()`, which is when p5 takes over moving the game forward.
+   * @type {boolean}
+   */
+  drawnByP5 = false;
+  /**
    * The state inspector, once it has been opened with the `inspectorKey` option (or made by hand).
    * @type {StateInspector|null}
    */
@@ -62,9 +67,27 @@ export class Game {
    * @type {LetterboxScaler|undefined}
    */
   scaler;
-  images = new Map(); // room id -> { image name: p5.Image }, filled by the p5 binding
+  /**
+   * The room pictures that are loaded, by room id: `{ 'hall.png': image }`, under the names the room uses
+   * for its `background` and `layers`. The game loads them in `start()`. A picture already in here is not
+   * loaded again, so you can put your own (for example one made with `createGraphics`) before starting.
+   * @type {Map<string, Object<string, Object>>}
+   */
+  images = new Map();
+  /**
+   * The inventory pictures that are loaded, by item id (the `image` of an item).
+   * @type {Object<string, Object>}
+   */
   itemImages = {};
   roomURLs = new Map(); // room id -> URL of its file, so its pictures load relative to it
+  /**
+   * The files that hotspots need, loaded in `start()`: for a `colorMask` hotspot its mask picture's pixels,
+   * for an `svg` hotspot with a file its text. Keys are `'<room id>:<name as the room writes it>'`, values
+   * `{ pixels: { data, width, height } }` or `{ text }`. A game made with {@link createGame} fills it by
+   * itself; fill it by hand when you use `new Game` with these hotspots.
+   * @type {Map<string, Object>}
+   */
+  hotspotFiles = new Map();
   #roomSources = [];
   #ready = null;
 
@@ -198,7 +221,7 @@ export class Game {
 
     // Entering a room: its hotspots, its floor, and the hero at the start position.
     this.events.on('room:enter', ({ room, start }) => {
-      const hotspots = createHotspots(room);
+      const hotspots = createHotspots(room, this.#hotspotAssets(room));
       applyHotspotState(this.state, room.id, hotspots);
       this.hover.setHotspots(hotspots);
       this.hero.navigator = Navigator.fromRoom(room);
@@ -264,7 +287,11 @@ export class Game {
   }
 
   /**
-   * Loads everything the game needs, then enters a room.
+   * Loads everything the game needs (room files, pictures, sounds), then enters a room.
+   *
+   * It resolves once the room is entered and its `onEnter` and `onEntered` hooks have finished, so an
+   * opening cutscene in `onEntered` is part of it. p5 does not start calling `draw()` until an async
+   * `setup()` has finished, so until then the game steps and draws itself: awaiting this in `setup()` is fine.
    * @param {string} [roomId] The room to start in. Default: the first one added.
    * @param {string} [startName='default'] Which of the room's `starts` the hero appears at.
    * @returns {Promise<void>} Resolves once the room is entered.
@@ -456,6 +483,16 @@ export class Game {
   }
 
   // ---- internals ----
+
+  // What createHotspots needs to read mask pictures and svg files (see hotspotFiles).
+  #hotspotAssets(room) {
+    const file = (name, what) => {
+      const found = this.hotspotFiles.get(`${room.id}:${name}`);
+      if (!found) throw new Error(`room "${room.id}": ${what} "${name}" is not loaded (a game loads these in start())`);
+      return found;
+    };
+    return { pixels: (name) => file(name, 'the mask picture').pixels, text: (name) => file(name, 'the svg file').text };
+  }
 
   #storage() {
     return this.options.storage ?? globalThis.localStorage;

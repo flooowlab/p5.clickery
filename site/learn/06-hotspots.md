@@ -136,3 +136,112 @@ function keyPressed() {
   if (key === 'e') spot.enabled = !spot.enabled;
 }
 ```
+
+<!-- page: Hotspots from a picture -->
+<!-- headless: skip -->
+<!-- covers: colorMaskProvider, parseColor, Game#hotspotFiles -->
+Polygons are easy to type, but a curvy lamp or a pile of junk is tedious to trace. A **colour mask** is a hidden picture of the room where each hotspot is a flat colour: the lamp is pure green, the chest pure red. Give the hotspot `provider: 'colorMask'`, the `mask` picture and its `color`; wherever that colour is, the hotspot is. The mask may have a different size from the room (positions are scaled), `tolerance` (default 4) is how far each colour channel may differ, and you should export it without antialiasing, so the colours are exact.
+
+The game reads the mask's pixels once, in `start()`, and keeps them in `game.hotspotFiles` (reading pixels every frame would be slow). `parseColor` turns `'#00ff00'` into `[0, 255, 0]`, and `colorMaskProvider` is the function that tests one pixel, for when you build hotspots by hand. Here the scenery and the mask are both made in code; hover the lamp and the chest.
+
+```js
+const { parseColor } = p5.clickery;
+let game;
+
+function picture(paint) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 640;
+  canvas.height = 360;
+  paint(canvas.getContext('2d'));
+  return canvas.toDataURL();
+}
+
+// what the player sees
+const scenery = picture((g) => {
+  g.fillStyle = '#2d3a55'; g.fillRect(0, 0, 640, 360);
+  g.fillStyle = '#3c4659'; g.fillRect(0, 250, 640, 110);
+  g.fillStyle = '#e8d6a0'; g.beginPath(); g.arc(200, 150, 38, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#555'; g.fillRect(195, 185, 10, 65);
+  g.fillStyle = '#96643c'; g.fillRect(400, 205, 110, 55);
+});
+
+// what the game uses to find the hotspots: flat colours, hard edges
+const mask = picture((g) => {
+  g.fillStyle = '#00ff00'; g.fillRect(160, 112, 80, 76);
+  g.fillStyle = '#ff0000'; g.fillRect(400, 205, 110, 55);
+});
+
+async function setup() {
+  game = createGame({
+    rooms: [{
+      id: 'yard', width: 640, height: 360, background: scenery,
+      starts: { default: { x: 80, y: 300 } },
+      walkable: [{ id: 'floor', points: [[0, 252], [640, 252], [640, 340], [0, 340]] }],
+      hotspots: [
+        { id: 'lamp', name: 'obj.lamp', provider: 'colorMask', mask, color: '#00ff00', walkTo: { x: 200, y: 290, dir: 'up' } },
+        { id: 'chest', name: 'obj.chest', provider: 'colorMask', mask, color: '#ff0000', walkTo: { x: 455, y: 295, dir: 'up' } },
+      ],
+    }],
+    strings: { 'obj.lamp': 'Street lamp', 'obj.chest': 'Chest', 'lamp.look': 'It is not lit.', 'chest.look': 'Locked.' },
+  });
+  game.on('lamp', { onLook: (ctx) => ctx.say('lamp.look') });
+  game.on('chest', { onLook: (ctx) => ctx.say('chest.look') });
+  await game.start();
+}
+
+function draw() {
+  game.draw();
+  fill(255);
+  textSize(13);
+  text('green is ' + JSON.stringify(parseColor('#00ff00')) + '; files kept for hotspots: ' + game.hotspotFiles.size, 10, 22);
+}
+```
+
+<!-- page: Hotspots from SVG paths -->
+<!-- headless: skip -->
+<!-- covers: svgProvider, parseSvgPaths, polygonProvider -->
+If you draw your room in a vector program such as Inkscape, the shapes are already SVG paths. A hotspot can use one: `provider: 'svg'` with `d`, the path data, or `svg: 'room.svg'`, a file whose `<path>` has the hotspot's `id` (or its Inkscape label); the game loads the file in `start()`. Paths are in room coordinates, so apply any transform before you export.
+
+`parseSvgPaths(svgText)` finds the paths of an SVG and returns them by id, which is useful to take a few shapes out of a drawing. `svgProvider` and `polygonProvider` are the functions underneath each kind, with the same `contains(x, y)`: game code never needs to know which kind a hotspot is. Hover the crate and the pond.
+
+```js
+const { parseSvgPaths, polygonProvider } = p5.clickery;
+let game;
+
+const svg = `<svg>
+  <path id="crate" d="M180 200 L300 200 L300 270 L180 270 Z"/>
+  <path id="pond" d="M380 285 Q450 235 520 285 Q450 335 380 285 Z"/>
+</svg>`;
+const paths = parseSvgPaths(svg);
+
+async function setup() {
+  game = createGame({
+    rooms: [{
+      id: 'yard', width: 640, height: 360, color: '#2d3a55',
+      starts: { default: { x: 80, y: 300 } },
+      walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]], color: '#3c4659' }],
+      hotspots: [
+        { id: 'crate', name: 'obj.crate', provider: 'svg', d: paths.crate, walkTo: { x: 240, y: 300, dir: 'up' } },
+        { id: 'pond', name: 'obj.pond', provider: 'svg', d: paths.pond, walkTo: { x: 450, y: 320, dir: 'up' } },
+      ],
+    }],
+    strings: { 'obj.crate': 'Crate', 'obj.pond': 'Pond' },
+  });
+
+  // draw the same paths as the scenery (in room coordinates, like the hotspots)
+  game.drawRoom = (p, room, g) => {
+    p5.clickery.drawRoomShapes(p, room, g);
+    p.drawingContext.fillStyle = '#96643c'; p.drawingContext.fill(new Path2D(paths.crate));
+    p.drawingContext.fillStyle = '#2f5d8a'; p.drawingContext.fill(new Path2D(paths.pond));
+  };
+  await game.start();
+}
+
+function draw() {
+  game.draw();
+  const square = polygonProvider([[0, 0], [10, 0], [10, 10], [0, 10]]);
+  fill(255);
+  textSize(13);
+  text('paths found in the svg: ' + Object.keys(paths).join(', ') + '   a polygon provider says (5, 5) is inside: ' + square.contains(5, 5), 10, 22);
+}
+```

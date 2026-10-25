@@ -38,6 +38,7 @@
     "tools/editor",
     "tools/compile-ink.mjs",
     "tools/lib",
+    "tools/shared",
     "tools/find-keys.mjs",
     "tools/check-rooms.mjs",
     "tools/animation",

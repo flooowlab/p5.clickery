@@ -48,7 +48,7 @@ game/      createGame / Game: all of the above wired together with defaults, plu
 dist/       built files to distribute (p5.clickery.min.js, .js, .esm.js); generated, do not edit
 src/        the library (src/index.js exports everything; src/global.js is the script-tag entry)
 examples/   runnable pages, one folder each, learning order: quickstart, core, rooms, adventure, lighthouse
-            examples/index.html lists them; examples/assets/ holds assets shared between examples
+            examples/assets/ holds assets shared between examples; each example has a page in site/examples/
 tools/      editor/ (room editor page), dialogue/ and animation/ (previewer pages), lib/ (logic shared by the scripts), and Node scripts: build.mjs, build-site.mjs (+ site/ helpers), check-rooms.mjs, find-keys.mjs, compile-ink.mjs, make-example-audio.mjs, make-sample-room.mjs
 site/       the website's own files: learn/*.md (lessons), tools/*.md (one per tool), assets/ (css, js); the Docs pages come from JSDoc in src/
 docs/       reference.md (formats: room, hotspot, items, scripts, dialogue, state, events, saves)
@@ -57,11 +57,11 @@ test/       unit/ (one file per src/ folder), tools/, integration/ (Lighthouse p
 
 **The website** (GitHub Pages, built by `.github/workflows/pages.yml`, locally `npm run build:site` into `_site/`) has three sections; Learn and Docs follow p5play's:
 - **Docs** is function-centred and generated from the JSDoc comments in `src/` (`/** */` with `@param`, `@returns`, `@example`). Write the comment with the code. `@typedef` documents option objects. A tag must start its own line; `{@link Name}` links to another entry.
-- **Learn** is example-centred: `site/learn/NN-topic.md` is a topic, split into pages by `<!-- page: Title -->`. Each page names what it teaches in `<!-- covers: Game#say, ... -->` and has one ```js sketch that runs live next to its code. Names in `covers` must exist in the JSDoc, or the build fails.
+- **Learn** is example-centred. p5 2.x does not start `draw()` until an async `setup()` has returned, and a game only moves forward from `draw()`, so a lesson's `setup()` must not `await` a cutscene, a walk, a line or a wait: start it without `await` (the library also steps and draws the game itself during `setup()`, see `src/game/setup-driver.js`, but `draw()` overlays are missing until it ends). The test harness runs lessons in p5's order and fails otherwise. A page that needs a real browser (canvas, pictures) adds `<!-- headless: skip -->`. `site/learn/NN-topic.md` is a topic, split into pages by `<!-- page: Title -->`. Each page names what it teaches in `<!-- covers: Game#say, ... -->` and has one ```js sketch that runs live next to its code. Names in `covers` must exist in the JSDoc, or the build fails.
 - **Tools**: `site/tools/NN-name.md`, front matter `title`, `status` (`available` or `planned`), `summary`, and optionally `open` (a path to a page to launch, such as `tools/editor/`). A new tool in `tools/` gets a page here; a planned one is labelled as not built. Keep a tool's logic in a small pure module (`tools/lib/`, or next to its page) with tests in `test/tools/`, and the page or CLI thin. Pages that import from `../../src/` need `src/` published: `tools/build-site.mjs` copies it, and a test checks that everything the pages load is copied.
 - `test/site/site.test.js` runs every sketch headlessly and keeps `test/site/undocumented.txt` (exports with no JSDoc yet) shrinking: document an export, then delete its line.
 
-New runnable pages go in their own `examples/<name>/` folder and get a card in `examples/index.html`. Pages load p5 and
+New runnable pages go in their own `examples/<name>/` folder and get a page in `site/examples/NN-name.md` (title, summary, what it shows; the site build wraps the example in the site's header). A tool app in `tools/<app>/` is wrapped the same way (list it in `APPS` in `tools/site/embed.mjs`) and uses `tools/shared/app.css`, so it follows the site's light and dark theme. Pages load p5 and
 `dist/p5.clickery.min.js` with `../../` paths (only the Lighthouse imports `src/`, as a modules-project example). Tests for a `src/<area>/` module go in `test/unit/<area>.test.js`.
 
 ### Core rules
@@ -87,7 +87,7 @@ Each phase ends with a working demo and passing tests.
 
 ### P0 · Setup
 - [x] Folder is `p5clickery` (no dot, so it is shell-safe). Package name and global namespace are `p5.clickery`.
-- [x] Add `package.json` (ES module, p5 pinned to 2.3.4), `.gitignore`, and a demo page that loads p5 2.x from `node_modules` (now `examples/core/`).
+- [x] Add `package.json` (ES module, p5 pinned to 2.3.4), `.gitignore`, and a demo page that loads p5 2.x from `node_modules` (now the Core lessons on the website).
 - [x] Register the addon (`registerClickery`) and create a fixed-size canvas in instance mode (`createGameCanvas`).
 - [x] Tests run with `npm test` (Node's built-in runner, see Stack decisions).
 - [x] Check the demo in a browser.

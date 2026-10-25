@@ -113,9 +113,9 @@ async function setup() {
 
   game.on('red', {
     onEnter: (ctx) => log.push('red: onEnter' + (ctx.firstVisit ? ' (first visit)' : '')),
-    onEntered: async (ctx) => {
+    onEntered: (ctx) => {
       log.push('red: onEntered');
-      if (ctx.firstVisit) await game.say('red.hello');
+      if (ctx.firstVisit) game.say('red.hello'); // not awaited, so the hook ends and the room change is over
     },
     onExit: () => log.push('red: onExit'),
   });
@@ -148,7 +148,10 @@ async function setup() {
     }],
   });
   await game.start();
+  blink();
+}
 
+async function blink() {
   const fade = game.scene.fade;
   await game.scheduler.wait(500);
   await fade.out(800);

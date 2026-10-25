@@ -17,6 +17,10 @@ function frameSource(code) {
     const report = (m) => parent.postMessage({ clickeryError: String(m) }, '*');
     addEventListener('error', (e) => report(e.message + (e.lineno ? ' (line ' + e.lineno + ')' : '')));
     addEventListener('unhandledrejection', (e) => report(e.reason?.message ?? e.reason));
+    // tells the page how many frames p5 has drawn (it does not start until an async setup() returns)
+    let frames = 0;
+    p5.registerAddon((_p5, _fn, lifecycles) => { lifecycles.predraw = () => { frames += 1; }; });
+    setInterval(() => parent.postMessage({ clickeryFrames: frames }, '*'), 400);
   })();
 <\/script></head><body><script>
 ${safe}
@@ -73,6 +77,11 @@ for (const section of sections) {
 }
 
 addEventListener('message', (e) => {
+  if (typeof e.data?.clickeryFrames === 'number') {
+    const shown = sections.find((s) => !s.hidden);
+    if (shown) shown.dataset.frames = String(e.data.clickeryFrames);
+    return;
+  }
   if (typeof e.data?.clickeryError !== 'string') return;
   const visible = sections.find((s) => !s.hidden);
   const box = visible?.querySelector('.error');

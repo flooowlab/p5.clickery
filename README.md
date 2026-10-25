@@ -53,16 +53,16 @@ Everything you can open in a browser is in the [examples](examples) folder, one 
 python -m http.server 8000
 ```
 
-then visit `http://localhost:8000/examples/` for the list.
+then visit `http://localhost:8000/examples/quickstart/` (or `adventure`, `lighthouse`). The [website](https://flooowlab.github.io/p5.clickery/examples/) shows them inside its own pages, with a short description of each.
 
 | Example | What it shows |
 | --- | --- |
 | [examples/quickstart](examples/quickstart/index.html) | The smallest working game: one room, a hero, one sign. **Start here.** |
 | [examples/adventure](examples/adventure/index.html) | A puzzle with items and combining, an opening cutscene, a guard to talk to, two rooms with music, sound effects, a settings panel, and scaling to any window or phone. Add `?adapter=ink` or `?adapter=twine` to change the dialogue format |
 | [examples/lighthouse](examples/lighthouse/index.html) | **A complete small game**: three rooms, a puzzle, an Ink conversation, a skippable ending, save and load. Read its source to see how a game is organised (its logic is in `game.js`, with no drawing code) |
-| [examples/core](examples/core/index.html) | *Under the hood:* the game loop, timers and state with save/load, on their own |
-| [examples/rooms](examples/rooms/index.html) | *Under the hood:* the parts `createGame` uses, wired by hand: two rooms, scrolling, an obstacle to walk around, depth scaling, three kinds of hotspot, debug overlay (press `D`) |
 | [tools/editor](tools/editor/index.html) | The room editor: load a picture, draw hotspots and floors, export the room JSON, preview it |
+
+The parts that `createGame` puts together (the game loop, timers, state, rooms, hotspots, navigation) each have lessons with live code in [Learn](https://flooowlab.github.io/p5.clickery/learn/): the Core, Rooms, Hotspots and Navigation topics.
 
 **How the repository is organised**
 
@@ -474,7 +474,7 @@ createHotspots(room, {
 });
 ```
 
-Read mask pixels **once**, when loading, and keep them (reading pixels every frame is slow). Draw the mask with no antialiasing, e.g. with `fillRect` in a canvas, then `getImageData`; `examples/rooms` shows this. The mask may have a different size from the room; positions are scaled automatically.
+Read mask pixels **once**, when loading, and keep them (reading pixels every frame is slow). Draw the mask with no antialiasing, e.g. with `fillRect` in a canvas, then `getImageData`; the *Hotspots from a picture* lesson on the website shows this. A game made with `createGame` does the loading for you: give the hotspot `mask` and `color` and it reads the mask picture in `start()`. The mask may have a different size from the room; positions are scaled automatically.
 
 **`walkTo`: where the hero stands**
 

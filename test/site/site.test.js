@@ -62,7 +62,10 @@ const memoryStorage = () => {
   return { getItem: (k) => data.get(k) ?? null, setItem: (k, v) => data.set(k, String(v)), removeItem: (k) => data.delete(k) };
 };
 
-// Runs a lesson's sketch without p5: setup() on a headless Game, stepping game time until it finishes.
+// Runs a lesson's sketch without p5, in the order p5 2.x does: setup() runs to the end first, with
+// no frames at all (p5 does not start draw() until an async setup() has returned, and a game only
+// moves forward from draw()). Then frames are stepped, as draw() would, so that the sequences
+// setup() started can run.
 async function runSetup(code) {
   const games = [];
   const createGame = (options) => {
@@ -78,14 +81,26 @@ async function runSetup(code) {
   assert.ok(setup, 'the sketch defines setup()');
   let finished = false;
   const running = Promise.resolve(setup()).finally(() => { finished = true; });
-  const started = Date.now();
-  while (!finished) {
-    for (const game of games) game.update(100);
-    await new Promise((resolve) => setImmediate(resolve));
-    assert.ok(Date.now() - started < 5000, 'setup() did not finish within 5 seconds');
-  }
+  for (let i = 0; i < 20 && !finished; i++) await new Promise((resolve) => setImmediate(resolve));
+  assert.ok(finished, 'setup() is still waiting for frames. p5 does not call draw() until an async setup() returns, '
+    + 'so do not await a cutscene, a walk, a line or a wait there: start it without await (see the lesson on cutscenes)');
   await running;
+
+  // draw(): step game time for a while, so that whatever setup() started plays out
+  for (let frame = 0; frame < 400; frame++) {
+    for (const game of games) game.update(50);
+    await new Promise((resolve) => setImmediate(resolve));
+  }
 }
+
+const TINY_ROOM = "{ id: 'yard', width: 640, height: 360, starts: { default: { x: 80, y: 300 } }, walkable: [{ id: 'f', points: [[0, 250], [640, 250], [640, 340], [0, 340]] }] }";
+
+test('the lesson runner behaves like p5: a setup that awaits something that needs frames is caught', async () => {
+  const waits = `let game; async function setup() { game = createGame({ rooms: [${TINY_ROOM}] }); await game.start(); await game.say('hello', { literal: true }); }`;
+  await assert.rejects(runSetup(waits), /still waiting for frames/);
+  const starts = `let game; async function setup() { game = createGame({ rooms: [${TINY_ROOM}] }); await game.start(); game.say('hello', { literal: true }); }`;
+  await runSetup(starts);
+});
 
 test('lessons only cover names that exist in the JSDoc, and every page has a sketch', () => {
   assert.deepEqual(checkLessons(lessons, model.byId), []);
@@ -95,7 +110,7 @@ const gameMembers = new Set(model.classes.find((c) => c.doc.name === 'Game').mem
 
 for (const lesson of lessons) {
   lesson.pages.forEach((page, i) => {
-    test(`lesson ${lesson.slug} page ${i} "${page.title}" runs`, async () => {
+    test(`lesson ${lesson.slug} page ${i} "${page.title}" runs`, { skip: page.skipHeadless && 'needs a browser' }, async () => {
       await runSetup(page.code);
     });
     test(`lesson ${lesson.slug} page ${i} "${page.title}" only uses documented game members`, () => {

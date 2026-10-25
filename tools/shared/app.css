@@ -1,0 +1,49 @@
+/* Shared look of the tool pages (room editor, dialogue previewer, animation previewer): the same
+   palette as the website, in light and dark. The apps follow the system setting, and the website
+   passes its own choice through data-theme on <html> when it shows an app. */
+:root {
+  color-scheme: light;
+  --bg: #fbfaf7; --panel: #ffffff; --ink: #1d2230; --muted: #626a7d; --line: #dfe2ea;
+  --accent: #3b5bdb; --accent-ink: #ffffff; --code-bg: #f3f4f8; --stage: #14161c;
+  --ctl: #eef0f5; --ctl-line: #cfd3de; --ctl-hover: #e3e6ee;
+  --row: #eef0f5; --row-on: #dbe4fb;
+  --ok-bg: #dff3e7; --warn-bg: #f7edc9; --err-bg: #fbe0e3; --err-ink: #a3202f;
+  --warm: #9a6a00; --good: #0b7a53; --you: #2f4fc4;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #111318; --panel: #181b22; --ink: #e2e5ee; --muted: #9aa1b2; --line: #2c313d;
+    --accent: #7c9aff; --accent-ink: #0d1020; --code-bg: #1d2130; --stage: #0a0b0f;
+    --ctl: #2b2f3a; --ctl-line: #434a5a; --ctl-hover: #363c4b;
+    --row: #252935; --row-on: #34405a;
+    --ok-bg: #1f3a28; --warn-bg: #47401f; --err-bg: #4a2328; --err-ink: #ffb4bd;
+    --warm: #ffd678; --good: #7fd6a8; --you: #8fb4ff;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111318; --panel: #181b22; --ink: #e2e5ee; --muted: #9aa1b2; --line: #2c313d;
+  --accent: #7c9aff; --accent-ink: #0d1020; --code-bg: #1d2130; --stage: #0a0b0f;
+  --ctl: #2b2f3a; --ctl-line: #434a5a; --ctl-hover: #363c4b;
+  --row: #252935; --row-on: #34405a;
+  --ok-bg: #1f3a28; --warn-bg: #47401f; --err-bg: #4a2328; --err-ink: #ffb4bd;
+  --warm: #ffd678; --good: #7fd6a8; --you: #8fb4ff;
+}
+
+* { box-sizing: border-box; }
+body.app { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.app header { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.app header h1 { font-size: 15px; margin: 0 8px 0 0; }
+.app label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.app button, .app select, .app input { font: inherit; color: var(--ink); background: var(--ctl); border: 1px solid var(--ctl-line); border-radius: 4px; padding: 4px 8px; }
+.app input[type="checkbox"] { padding: 0; }
+.app button { cursor: pointer; }
+.app button:hover:not(:disabled) { background: var(--ctl-hover); }
+.app button:disabled { opacity: 0.45; cursor: default; }
+.app button.primary, .app button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.app h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 16px 0 6px; }
+.app h2:first-child { margin-top: 0; }
+.app .muted, .app .hint { color: var(--muted); }
+.app code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; background: var(--code-bg); padding: 0 4px; border-radius: 3px; }
+.app textarea { background: var(--code-bg); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; font: 13px/1.5 ui-monospace, "Cascadia Code", Consolas, monospace; }

@@ -25,7 +25,10 @@ async function setup() {
     },
   });
   await game.start();
+  play();
+}
 
+async function play() {
   await game.cutscenes.run(async (cs) => {
     await game.say('cs.long');
     await game.hero.walkTo({ x: 560, y: 300 });
@@ -79,6 +82,10 @@ async function setup() {
     draw: (p) => { p.noStroke(); p.fill('#4f7cac'); p.rect(guard.x - 14, guard.y - 70, 28, 70, 6); },
   });
 
+  play(guard);
+}
+
+async function play(guard) {
   await game.cutscenes.run(async () => {
     await game.say('cs.must');
   }, { skippable: false });

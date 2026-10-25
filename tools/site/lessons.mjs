@@ -8,6 +8,9 @@
 //   <!-- covers: createGame, Game#start -->
 //   Text, then one ```js block: the runnable sketch.
 //
+// A page that needs a real browser (canvas, loading pictures) adds <!-- headless: skip --> to be left
+// out of the Node test run; the browser check in the manual sweep covers it.
+//
 // `covers` names what the page teaches. The names must exist in the JSDoc, so a renamed
 // function breaks the build instead of leaving a stale lesson.
 import fs from 'node:fs';
@@ -32,8 +35,10 @@ export function parseLesson(file) {
     let text = pages[i + 1];
     const covers = (text.match(/^<!-- covers: (.*) -->$/m)?.[1] ?? '').split(',').map((s) => s.trim()).filter(Boolean);
     text = text.replace(/^<!-- covers: .* -->\n?/m, '');
+    const skipHeadless = /^<!-- headless: skip -->$/m.test(text);
+    text = text.replace(/^<!-- headless: skip -->\n?/m, '');
     const code = text.match(FENCE)?.[1].replace(/\s+$/, '') ?? null;
-    out.push({ title: pages[i].trim(), covers, code, text: text.replace(FENCE, '').trim() });
+    out.push({ title: pages[i].trim(), covers, code, skipHeadless, text: text.replace(FENCE, '').trim() });
   }
   if (!meta.title || !out.length) throw new Error(`${file}: needs a title and at least one page`);
   return { slug, file, ...meta, pages: out };

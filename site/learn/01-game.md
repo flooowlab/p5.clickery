@@ -237,6 +237,8 @@ A **cutscene** is a scripted moment: the player cannot click, and a Skip button 
 
 If the player skips, the hero jumps to where they would have ended up and the lines are not shown, but everything your script does to the game still happens. Press the Skip button (or Escape) to try it.
 
+Notice that `setup()` does not `await` the cutscene. p5 starts calling `draw()` only when `setup()` has returned, so a long sequence is started and left to run. (Awaiting it would work too, because the game draws itself meanwhile, but your own `draw()` would show nothing until it ended.)
+
 ```js
 let game;
 
@@ -255,7 +257,8 @@ async function setup() {
 
   await game.start();
 
-  await game.cutscene(async () => {
+  // no await: setup() has to return, so that p5 can start drawing
+  game.cutscene(async () => {
     await game.say('intro.one');
     await game.hero.walkTo({ x: 420, y: 300 });
     await game.say('intro.two');
@@ -532,5 +535,92 @@ function draw() {
   fill(255);
   textSize(14);
   text(log + '  |  inventory: ' + JSON.stringify(game.state.get('inventory')), 10, 22);
+}
+```
+
+<!-- page: Instance mode and modules -->
+<!-- headless: skip -->
+<!-- covers: attachP5, createGameCanvas, registerClickery, clickeryAddon -->
+So far the sketches used p5's **global mode**: `setup()` and `draw()` are plain functions and `createGame` is simply there. If you use p5's **instance mode**, where the whole sketch lives in a function that receives the p5 object (usually called `p`), the same things are on `p`: `p.createGame(options)`.
+
+Underneath, `createGame` is two steps: `new Game(options)` makes the game itself, which knows nothing of p5 (handy for tests, or a game's logic in its own file), and `attachP5(game, p)` connects it to a sketch: the canvas, which it makes with `p.createGameCanvas(width, height)` (a normal p5 canvas that also remembers the game's logical size), fitting it to the page, the mouse, touch and keys, loading pictures, and `game.draw()`. Do the two steps yourself when you need something in between.
+
+The script tag registers p5.clickery with p5 for you (that is `clickeryAddon`). With ES modules you do it yourself, once, before the first sketch: `import { registerClickery } from './p5.clickery.esm.js'; registerClickery(p5);`.
+
+```js
+const { Game, attachP5 } = p5.clickery;
+
+new p5((p) => {
+  let game;
+
+  p.setup = async () => {
+    game = new Game({
+      rooms: [{
+        id: 'yard', width: 640, height: 360, color: '#2d3a55',
+        starts: { default: { x: 120, y: 300 } },
+        walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]], color: '#3c4659' }],
+      }],
+    });
+    attachP5(game, p);   // the canvas, the input and the drawing (createGame does both steps)
+    await game.start();
+  };
+
+  p.draw = () => {
+    game.draw();
+    p.fill(255);
+    p.textSize(13);
+    p.text('instance mode: the hero is at ' + Math.round(game.hero.x) + ', ' + Math.round(game.hero.y), 10, 22);
+  };
+});
+```
+
+<!-- page: Reuse the default drawing -->
+<!-- covers: drawRoomShapes, drawHeroDefault, drawSpeechDefault, drawSkipButton, skipButtonRect, hitSkipButton -->
+When you replace `game.drawRoom`, `game.drawHero` or `game.drawSpeech` you rarely want to throw the default away: you want to add to it. The defaults are functions on `p5.clickery`, so a replacement can call them first and then draw more: `drawRoomShapes(p, room, game)` fills the floors, obstacles and hotspots that have a colour, `drawHeroDefault(p, hero)` draws the hero's animation or a simple figure, and `drawSpeechDefault(p, hero, game)` writes the line above its head.
+
+The other pieces of the screen can be used by hand too. The Skip button is `drawSkipButton(p, width)`, `skipButtonRect(width)` says where it is and `hitSkipButton(x, y, width)` whether a point is on it. Here the hero gets a shadow under the default figure, and a Skip button is drawn all the time, which you can click.
+
+```js
+const { drawHeroDefault, drawSpeechDefault, drawRoomShapes, drawSkipButton, skipButtonRect, hitSkipButton } = p5.clickery;
+let game;
+let message = 'click the Skip button';
+
+async function setup() {
+  game = createGame({
+    rooms: [{
+      id: 'yard', width: 640, height: 360, color: '#2d3a55',
+      starts: { default: { x: 120, y: 300 } },
+      walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]], color: '#3c4659' }],
+    }],
+  });
+
+  game.drawRoom = (p, room, g) => {
+    drawRoomShapes(p, room, g);                  // the default floor...
+    p.noStroke();
+    p.fill(255, 255, 255, 25);
+    p.rect(0, 250, 640, 6);                      // ...and a highlight along its far edge
+  };
+  game.drawHero = (p, hero) => {
+    p.noStroke();
+    p.fill(0, 0, 0, 80);
+    p.ellipse(hero.x, hero.y, 44 * hero.scale, 10 * hero.scale); // a shadow under the feet
+    drawHeroDefault(p, hero);
+  };
+  game.drawSpeech = (p, hero, g) => drawSpeechDefault(p, hero, g);
+
+  await game.start();
+}
+
+function draw() {
+  game.draw();
+  drawSkipButton(window, 640);
+  const r = skipButtonRect(640);
+  fill(255);
+  textSize(13);
+  text('the Skip button is at x ' + r.x + ', y ' + r.y + ', ' + r.w + ' x ' + r.h + '   ' + message, 10, 22);
+}
+
+function mousePressed() {
+  if (hitSkipButton(mouseX, mouseY, 640)) message = 'you pressed Skip';
 }
 ```

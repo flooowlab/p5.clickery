@@ -127,8 +127,8 @@ async function setup() {
   ticker = game.scheduler.every(500, () => { ticks += 1; });
   delayed = game.scheduler.after(4000, () => { message = 'four seconds passed'; });
 
-  await game.scheduler.wait(2000);
-  message = 'two seconds passed (waited)';
+  // wait() returns a promise: say what happens next with then() (and do not await it in setup())
+  game.scheduler.wait(2000).then(() => { message = 'two seconds passed (waited)'; });
 }
 
 function draw() {
@@ -245,6 +245,63 @@ function keyPressed() {
   if (key === 'q') message = loadFromSlot(game.state, 'one') ? 'loaded slot one' : 'slot one is empty';
   if (key === 'w') message = loadFromSlot(game.state, 'two') ? 'loaded slot two' : 'slot two is empty';
   if (key === 'd') { deleteSlot('one'); deleteSlot('two'); message = 'both slots deleted'; }
+}
+```
+
+<!-- page: Saves as files -->
+<!-- headless: skip -->
+<!-- covers: exportToFile, importFromFile -->
+A save in `localStorage` stays in one browser. `exportToFile(state, 'savegame.json')` offers the save as a file to download, so the player can keep it, move it to another computer or send it to you when something goes wrong, and `importFromFile(state, file)` restores it from a file the player chose. They use the same save format as `saveToSlot`, and an import that is not a save (or comes from a newer version) is refused before anything changes. They only work in a browser.
+
+Pull the lever, press **E** to download the save, pull it again, then press **O** to open the file and see the lever's count go back. After importing a state, re-enter the room with `game.scene.restore()` so the room matches it.
+
+```js
+const { exportToFile, importFromFile } = p5.clickery;
+let game;
+let message = 'pull the lever, then press E';
+
+async function setup() {
+  game = createGame({
+    rooms: [{
+      id: 'yard', width: 640, height: 360, color: '#2d3a55',
+      starts: { default: { x: 80, y: 300 } },
+      walkable: [{ id: 'floor', points: [[0, 250], [640, 250], [640, 340], [0, 340]], color: '#3c4659' }],
+      hotspots: [{
+        id: 'lever', name: 'obj.lever', provider: 'polygon', color: '#c9a227',
+        points: [[300, 200], [330, 200], [330, 250], [300, 250]], walkTo: { x: 315, y: 290, dir: 'up' },
+      }],
+    }],
+    strings: { 'obj.lever': 'Lever' },
+  });
+  game.on('lever', { onInteract: () => game.state.set('vars.pulls', game.state.get('vars.pulls', 0) + 1) });
+  await game.start();
+}
+
+function draw() {
+  game.draw();
+  fill(255);
+  textSize(13);
+  text('lever pulled ' + game.state.get('vars.pulls', 0) + ' times   (E downloads the save, O opens a save file)', 10, 22);
+  text(message, 10, 40);
+}
+
+function keyPressed() {
+  if (key === 'e') { exportToFile(game.state, 'lever-save.json'); message = 'saved as lever-save.json'; }
+  if (key === 'o') {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async () => {
+      try {
+        await importFromFile(game.state, input.files[0]);
+        await game.scene.restore();
+        message = 'loaded';
+      } catch (err) {
+        message = 'not a save: ' + err.message;
+      }
+    };
+    input.click();
+  }
 }
 ```
 

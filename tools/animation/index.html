@@ -4,34 +4,24 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>p5.clickery animation previewer</title>
+  <link rel="stylesheet" href="../shared/app.css">
   <style>
-    :root { color-scheme: dark; }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: #15171c; color: #dfe2ea; font: 14px/1.5 system-ui, sans-serif; }
-    header { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 8px 12px; background: #1f222b; border-bottom: 1px solid #333844; }
-    header h1 { font-size: 15px; margin: 0 8px 0 0; }
-    label { display: inline-flex; align-items: center; gap: 6px; color: #9aa1b2; }
-    button, select, input { font: inherit; color: inherit; background: #2b2f3a; border: 1px solid #434a5a; border-radius: 4px; padding: 4px 8px; }
-    button { cursor: pointer; } button:hover { background: #363c4b; }
-    input[type=number] { width: 72px; } input[type=checkbox] { padding: 0; }
     main { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; padding: 12px; }
-    h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #8f98ad; margin: 16px 0 6px; }
-    h2:first-child { margin-top: 0; }
-    canvas { display: block; background: #0d0f13; border: 1px solid #333844; border-radius: 6px; image-rendering: pixelated; max-width: 100%; }
+    canvas { display: block; background: var(--stage); border: 1px solid var(--line); border-radius: 6px; image-rendering: pixelated; max-width: 100%; }
     #sheet { cursor: crosshair; }
+    input[type=number] { width: 72px; }
     .rows { display: flex; flex-direction: column; gap: 6px; }
     .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
     .row input[type=text] { width: 120px; } .row input.frames { width: 130px; }
-    .bad { border-color: #c0392b !important; }
-    #warnings div { color: #ffd678; } #warnings .ok { color: #7fd6a8; }
+    .app .bad { border-color: #c0392b; }
+    #warnings div { color: var(--warm); } #warnings .ok { color: var(--good); }
     .dirs { display: grid; grid-template-columns: repeat(3, 38px); gap: 3px; margin: 6px 0; }
-    .dirs button { padding: 2px 0; } .dirs button.on { background: #3b5bdb; border-color: #6c9bff; }
-    textarea { width: 100%; height: 280px; background: #181b22; color: #dfe2ea; border: 1px solid #333844; border-radius: 6px; padding: 10px; font: 12px/1.5 ui-monospace, Consolas, monospace; resize: vertical; }
-    .muted { color: #8f98ad; }
+    .dirs button { padding: 2px 0; }
+    textarea { width: 100%; height: 280px; padding: 10px; font-size: 12px; resize: vertical; }
     @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
   </style>
 </head>
-<body>
+<body class="app">
   <header>
     <h1>Animation previewer</h1>
     <button id="open">Open sprite sheet…</button>

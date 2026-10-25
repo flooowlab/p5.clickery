@@ -34,7 +34,7 @@ function topicPage(lessons, lesson, hrefOf) {
       <div class="bar"><span>sketch.js</span><span><button type="button" class="run">Run ▶</button><button type="button" class="reset">Reset</button></span></div>
       <textarea class="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Sketch code">${escapeHtml(p.code)}</textarea>
     </div>
-    <div class="stage"><iframe title="Result" sandbox="allow-scripts allow-same-origin"></iframe><pre class="error" hidden></pre></div>
+    <div class="stage"><iframe title="Result" sandbox="allow-scripts allow-same-origin allow-downloads"></iframe><pre class="error" hidden></pre></div>
   </div>
   <p class="pager">${i > 0 ? `<a href="?page=${i - 1}" data-page="${i - 1}">← Previous</a>` : '<span></span>'}${i < lesson.pages.length - 1 ? `<a href="?page=${i + 1}" data-page="${i + 1}">Next →</a>` : '<span></span>'}</p>
 </section>`).join('');

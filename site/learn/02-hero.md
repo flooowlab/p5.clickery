@@ -8,6 +8,8 @@ The hero is `game.hero`, an **Actor**. `hero.walkTo({ x, y })` walks to a point,
 
 If something else sends the hero somewhere first (a click on the floor, another `walkTo`), the first walk is interrupted and its promise resolves to `false`. While a walk is under way, `hero.walking` is `true`.
 
+A sequence like this lives in its own `async` function, which `setup()` calls without `await`: p5 starts drawing only when `setup()` has returned.
+
 ```js
 let game;
 
@@ -21,7 +23,10 @@ async function setup() {
     }],
   });
   await game.start();
+  patrol();
+}
 
+async function patrol() {
   const hero = game.hero;
   for (let lap = 0; lap < 2; lap++) {
     await hero.walkTo({ x: 520, y: 300, dir: 'left' });
@@ -58,7 +63,10 @@ async function setup() {
     strings: { 'hero.one': 'A line from a text key.' },
   });
   await game.start();
+  talk();
+}
 
+async function talk() {
   const hero = game.hero;
   await hero.say('hero.one');
   await hero.say('Text that is shown as it is.', { literal: true });
@@ -93,7 +101,10 @@ async function setup() {
     }],
   });
   await game.start();
+  look();
+}
 
+async function look() {
   const hero = game.hero;
   await game.scheduler.wait(800);
   hero.face('left');

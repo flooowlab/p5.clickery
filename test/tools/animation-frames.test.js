@@ -58,9 +58,10 @@ test('the snippet is code for the hero option, and it is valid JavaScript', () =
     },
   });
   assert.match(code, /await loadImage\("art\/hero\.png"\)/);
-  assert.match(code, /sheet\.get\(\(i % 8\) \* 32, Math\.floor\(i \/ 8\) \* 48, 32, 48\)/);
-  assert.match(code, /walk_right: \{ frames: \[4, 5, 6, 7\]\.map\(frame\), delay: 120 \},/);
-  assert.match(code, /wave: \{ frames: \[9, 10\]\.map\(frame\), delay: 100, loop: false \},/);
+  assert.match(code, /p5\.clickery\.spriteFrames\(sheet, 32, 48\)/);
+  assert.match(code, /idle: \{ frames: \[frames\[0\]\], delay: 200 \},/);
+  assert.match(code, /walk_right: \{ frames: \[4, 5, 6, 7\]\.map\(\(i\) => frames\[i\]\), delay: 120 \},/);
+  assert.match(code, /wave: \{ frames: \[9, 10\]\.map\(\(i\) => frames\[i\]\), delay: 100, loop: false \},/);
   assert.match(code, /directions: 4,/);
   const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor;
   assert.doesNotThrow(() => new AsyncFunction('loadImage', 'createGame', code));

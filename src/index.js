@@ -64,7 +64,10 @@ export function clickeryAddon(p5, fn, lifecycles) {
   // Games advance in step with p5's own frames (so noLoop() pauses them too).
   if (lifecycles) {
     lifecycles.predraw = function () {
-      for (const game of this._clickeryGames ?? []) game.update(this.deltaTime);
+      for (const game of this._clickeryGames ?? []) {
+        game.drawnByP5 = true; // from now on p5 drives the game (see src/game/setup-driver.js)
+        game.update(this.deltaTime);
+      }
     };
   }
 

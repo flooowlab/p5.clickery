@@ -8,6 +8,7 @@ import { drawHoverLabel } from '../ui/inventory-bar.js';
 import { hitSkipButton, drawSkipButton } from '../ui/skip-button.js';
 import { drawDebugOverlay } from '../debug/overlay.js';
 import { StateInspector } from '../debug/inspector.js';
+import { driveUntilDrawing } from './setup-driver.js';
 
 /**
  * Connects a game to a p5 sketch: the canvas, fitting it to the page, mouse, touch and keys, loading
@@ -78,6 +79,7 @@ export function attachP5(game, p, { canvas = true, parent = null, fit = true } =
   game.drawSpeech ??= drawSpeechDefault;
 
   (p._clickeryGames ??= new Set()).add(game);
+  driveUntilDrawing(game); // so an async setup() can await a cutscene: see setup-driver.js
   return game;
 }
 
@@ -154,9 +156,32 @@ async function loadImages(game, p) {
     const images = game.images.get(id) ?? {};
     for (const name of names) images[name] ??= await load(name, game.roomURLs.get(id));
     game.images.set(id, images);
+    await loadHotspotFiles(game, id, room, load);
   }
   for (const [id, item] of Object.entries(game.inventory.items)) {
     if (item.image && !game.itemImages[id]) game.itemImages[id] = await load(item.image);
+  }
+}
+
+// colorMask hotspots need their mask picture's pixels (read once, here, never per frame) and svg
+// hotspots with a file need its text. Both load relative to the room file, like its pictures.
+async function loadHotspotFiles(game, roomId, room, load) {
+  for (const def of room.hotspots ?? []) {
+    if (def.provider === 'colorMask' && def.mask && !game.hotspotFiles.has(`${roomId}:${def.mask}`)) {
+      const img = await load(def.mask, game.roomURLs.get(roomId));
+      if (!img) continue;
+      img.loadPixels();
+      game.hotspotFiles.set(`${roomId}:${def.mask}`, { pixels: { data: img.pixels, width: img.width, height: img.height } });
+    } else if (def.provider === 'svg' && def.svg && !def.d && !game.hotspotFiles.has(`${roomId}:${def.svg}`)) {
+      try {
+        const url = new URL(def.svg, game.roomURLs.get(roomId) ?? globalThis.document?.baseURI).href;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(String(response.status));
+        game.hotspotFiles.set(`${roomId}:${def.svg}`, { text: await response.text() });
+      } catch (err) {
+        console.warn(`could not load the svg file "${def.svg}": ${err.message}`);
+      }
+    }
   }
 }
 

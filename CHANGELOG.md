@@ -2,7 +2,14 @@
 
 ## Unreleased
 
+### Fixed
+- An async `setup()` that awaits something needing frames (an opening cutscene in a room's `onEntered`, a line of speech, a walk) no longer waits forever. p5 2.x does not call `draw()` until `setup()` returns, and a game only moved forward from `draw()`; now the game steps and draws itself from the browser's frame callback until p5's loop takes over (`src/game/setup-driver.js`). `game.start()` documents this.
+- `createGame` now supports `colorMask` hotspots and `svg` hotspots that name a file: the p5 binding loads the mask pictures (pixels read once) and SVG files in `start()`, relative to the room file, and the game passes them to the hotspot providers (`game.hotspotFiles`). Before, only polygons and inline SVG paths worked through `createGame`.
+
 ### Added
+- `spriteFrames(sheet, frameWidth, frameHeight)` cuts a sprite sheet into frames for an actor's `animations`. The animation previewer's code uses it.
+- Website: the examples and the three tool apps (room editor, dialogue previewer, animation previewer) are shown inside the site's own pages; the apps share `tools/shared/app.css` and follow the light and dark theme. The `core` and `rooms` example demos are removed; their content is in the Core, Rooms, Hotspots and Navigation lessons.
+- Lessons: Pictures (backgrounds, parallax layers, item pictures, sprite sheets), SVG and colour-mask hotspots, instance mode, saves as files, and reusing the default drawing. 65 lessons in 13 topics.
 - A website for GitHub Pages: **Learn** (live, editable lessons) and **Docs** (generated from JSDoc comments in `src/`). `npm run build:site` builds it into `_site/`.
 - JSDoc comments on `createGame`, `createGameCanvas`, `registerClickery`, `GameOptions` and every `Game` member. No behaviour change; `Game` gains the declared properties `actors` and `scaler` (both were already used).
 - `GAME_DEFAULTS` moved to `src/game/options.js` (still exported from the same place).

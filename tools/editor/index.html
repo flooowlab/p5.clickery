@@ -4,47 +4,40 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>p5.clickery room editor</title>
+  <link rel="stylesheet" href="../shared/app.css">
   <style>
-    :root { color-scheme: dark; }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; margin: 0; }
-    body { display: flex; flex-direction: column; background: #15171c; color: #dfe2ea; font: 13px/1.4 system-ui, sans-serif; }
-    header { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 8px 10px; background: #1f222b; border-bottom: 1px solid #333844; }
+    html, body { height: 100%; }
+    body.app { display: flex; flex-direction: column; font-size: 13px; line-height: 1.4; }
     header .group { display: flex; gap: 4px; align-items: center; }
-    header .sep { width: 1px; height: 22px; background: #3a3f4c; }
-    button, select, input { font: inherit; color: inherit; background: #2b2f3a; border: 1px solid #434a5a; border-radius: 4px; padding: 4px 8px; }
-    button { cursor: pointer; }
-    button:hover:not(:disabled) { background: #363c4b; }
-    button:disabled { opacity: 0.45; cursor: default; }
-    button.tool.on { background: #3b6fd6; border-color: #6c9bff; }
+    header .sep { width: 1px; height: 22px; background: var(--line); }
     input[type=range] { padding: 0; width: 90px; }
     main { flex: 1; display: flex; min-height: 0; }
-    #view { flex: 1; position: relative; min-width: 0; }
+    #view { flex: 1; position: relative; min-width: 0; background: var(--stage); }
     canvas { display: block; width: 100%; height: 100%; touch-action: none; }
-    #status { position: absolute; left: 8px; bottom: 8px; right: 8px; padding: 4px 8px; background: rgba(0,0,0,.7); border-radius: 4px; pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #status { position: absolute; left: 8px; bottom: 8px; right: 8px; padding: 4px 8px; background: rgba(0,0,0,.7); color: #fff; border-radius: 4px; pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #status.error { color: #ff9b9b; }
-    aside { width: 300px; overflow: auto; padding: 8px 12px; background: #1b1e26; border-left: 1px solid #333844; }
-    aside h3 { margin: 14px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #8f98ad; }
-    aside label { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+    aside { width: 300px; overflow: auto; padding: 8px 12px; background: var(--panel); border-left: 1px solid var(--line); }
+    aside h3 { margin: 14px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+    aside label { display: flex; align-items: center; gap: 6px; margin: 4px 0; color: var(--ink); }
     aside label input:not([type=number]), aside label select { flex: 1; min-width: 0; }
     aside label input[type=number] { width: 70px; }
     ul { list-style: none; margin: 0; padding: 0; }
-    .shapes li { display: flex; justify-content: space-between; align-items: center; padding: 3px 6px; margin: 2px 0; border-radius: 4px; background: #252935; cursor: pointer; border-left: 4px solid; }
-    .shapes li.hotspot { border-color: #ff5a5a; } .shapes li.walkable { border-color: #50aaff; } .shapes li.obstacle { border-color: #5adc78; }
-    .shapes li.on { background: #34405a; }
-    .shapes li.empty, .shapes.starts li { cursor: default; border-color: transparent; color: #7c8499; }
+    .shapes li { display: flex; justify-content: space-between; align-items: center; padding: 3px 6px; margin: 2px 0; border-radius: 4px; background: var(--row); cursor: pointer; border-left: 4px solid; }
+    .shapes li.hotspot { border-color: #e0453f; } .shapes li.walkable { border-color: #2f86d6; } .shapes li.obstacle { border-color: #2e9e4f; }
+    .shapes li.on { background: var(--row-on); }
+    .shapes li.empty, .shapes.starts li { cursor: default; border-color: transparent; color: var(--muted); }
     .shapes.starts li { color: inherit; border-color: #888; }
     .shapes button { padding: 0 6px; }
     .problems li { padding: 3px 6px; margin: 2px 0; border-radius: 4px; }
-    .problems .error { background: #4a2328; } .problems .warning { background: #47401f; } .problems .ok { background: #1f3a28; }
-    .hint { color: #8f98ad; margin: 4px 0; } .mono { font-family: ui-monospace, monospace; font-size: 12px; }
-    dialog { width: min(720px, 92vw); background: #1f222b; color: inherit; border: 1px solid #434a5a; border-radius: 8px; }
-    dialog textarea { width: 100%; height: 320px; background: #15171c; color: #dfe2ea; border: 1px solid #434a5a; border-radius: 4px; font: 12px ui-monospace, monospace; }
+    .problems .error { background: var(--err-bg); } .problems .warning { background: var(--warn-bg); } .problems .ok { background: var(--ok-bg); }
+    .hint { margin: 4px 0; } .mono { font-family: ui-monospace, monospace; font-size: 12px; }
+    dialog { width: min(720px, 92vw); background: var(--panel); color: var(--ink); border: 1px solid var(--ctl-line); border-radius: 8px; }
+    dialog textarea { width: 100%; height: 320px; padding: 8px; font-size: 12px; resize: vertical; }
     dialog .actions { display: flex; gap: 6px; margin-top: 8px; justify-content: flex-end; }
     #help { max-width: 560px; }
   </style>
 </head>
-<body>
+<body class="app">
   <header>
     <div class="group">
       <button id="open">Open image…</button>

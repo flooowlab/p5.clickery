@@ -67,19 +67,19 @@ export function checkAnimations(animations, frameCount) {
  * @param {string} config.file The sheet's file name.
  * @param {number} config.frameWidth
  * @param {number} config.frameHeight
- * @param {number} config.columns
+ * @param {number} config.columns The columns of the sheet, which the comment in the code mentions.
  * @param {Object<string, {frames: number[], delay: number, loop: boolean}>} config.animations
  * @param {4|8} [config.directions=4]
  * @returns {string}
  */
 export function buildSnippet({ file, frameWidth, frameHeight, columns, animations, directions = 4 }) {
   const entries = Object.entries(animations).map(([name, a]) => {
-    const frames = `[${a.frames.join(', ')}].map(frame)`;
-    return `      ${name}: { frames: ${frames}, delay: ${a.delay}${a.loop === false ? ', loop: false' : ''} },`;
+    const list = a.frames.length === 1 ? `[frames[${a.frames[0]}]]` : `[${a.frames.join(', ')}].map((i) => frames[i])`;
+    return `      ${name}: { frames: ${list}, delay: ${a.delay}${a.loop === false ? ', loop: false' : ''} },`;
   });
   return [
     `const sheet = await loadImage(${JSON.stringify(file)});`,
-    `const frame = (i) => sheet.get((i % ${columns}) * ${frameWidth}, Math.floor(i / ${columns}) * ${frameHeight}, ${frameWidth}, ${frameHeight});`,
+    `const frames = p5.clickery.spriteFrames(sheet, ${frameWidth}, ${frameHeight}); // ${columns} columns, numbered left to right, top to bottom`,
     '',
     'const game = createGame({',
     '  hero: {',
