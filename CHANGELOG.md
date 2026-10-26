@@ -7,6 +7,8 @@
 - `createGame` now supports `colorMask` hotspots and `svg` hotspots that name a file: the p5 binding loads the mask pictures (pixels read once) and SVG files in `start()`, relative to the room file, and the game passes them to the hotspot providers (`game.hotspotFiles`). Before, only polygons and inline SVG paths worked through `createGame`.
 
 ### Added
+- A game scaled up to fill a big window or a high-density screen now draws at the size it is shown at (the binding sets p5's `pixelDensity` when the letterbox layout changes), so it stays crisp instead of being a stretched 640x360. The logical size and every coordinate are unchanged. `attachP5` has a `sharp` option (default `true`); `false` keeps the canvas at its logical size, for pixel art.
+- Website: the Learn topic pages are a full-width workspace with three resizable panes (text, code, result), and the page list sits on its own row.
 - `spriteFrames(sheet, frameWidth, frameHeight)` cuts a sprite sheet into frames for an actor's `animations`. The animation previewer's code uses it.
 - Website: the examples and the three tool apps (room editor, dialogue previewer, animation previewer) are shown inside the site's own pages; the apps share `tools/shared/app.css` and follow the light and dark theme. The `core` and `rooms` example demos are removed; their content is in the Core, Rooms, Hotspots and Navigation lessons.
 - Lessons: Pictures (backgrounds, parallax layers, item pictures, sprite sheets), SVG and colour-mask hotspots, instance mode, saves as files, and reusing the default drawing. 65 lessons in 13 topics.

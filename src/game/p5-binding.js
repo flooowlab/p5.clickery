@@ -10,6 +10,21 @@ import { drawDebugOverlay } from '../debug/overlay.js';
 import { StateInspector } from '../debug/inspector.js';
 import { driveUntilDrawing } from './setup-driver.js';
 
+// Sets p5's pixel density so the canvas has as many pixels as it is shown with (in steps of 0.5, up to 4).
+// p5 resets the canvas's css size when the density changes, so the scaler lays it out again.
+function densityMatcher(p, getScaler) {
+  let applied = null;
+  return (layout) => {
+    if (!(layout.scale > 0)) return;
+    const dpr = globalThis.devicePixelRatio || 1;
+    const density = Math.min(4, Math.max(1, Math.ceil(layout.scale * dpr * 2) / 2));
+    if (density === applied) return;
+    applied = density;
+    p.pixelDensity(density);
+    getScaler()?.update();
+  };
+}
+
 /**
  * Connects a game to a p5 sketch: the canvas, fitting it to the page, mouse, touch and keys, loading
  * pictures, and `game.draw()`. {@link createGame} does this for you; call it to attach a game made with
@@ -20,9 +35,11 @@ import { driveUntilDrawing } from './setup-driver.js';
  * @param {boolean} [options.canvas=true] Create the canvas. `false` uses one you made.
  * @param {HTMLElement|string} [options.parent] An element, or its id, to put the canvas in.
  * @param {boolean} [options.fit=true] Scale to the page or the parent with letterbox bars.
+ * @param {boolean} [options.sharp=true] Draw at the size the game is shown at (p5's `pixelDensity`), so a game scaled up
+ * on a big screen stays crisp instead of blurry. `false` keeps the canvas at its logical size, for pixel art.
  * @returns {Game} The same game.
  */
-export function attachP5(game, p, { canvas = true, parent = null, fit = true } = {}) {
+export function attachP5(game, p, { canvas = true, parent = null, fit = true, sharp = true } = {}) {
   const { width, height } = game.options;
   game.p = p;
   const renderer = canvas ? p.createGameCanvas(width, height) : null;
@@ -32,7 +49,11 @@ export function attachP5(game, p, { canvas = true, parent = null, fit = true } =
     if (!node) throw new Error(`no element with id "${parent}" to put the game in`);
     node.appendChild(el);
   }
-  if (fit && el) game.scaler = new LetterboxScaler({ canvas: el, container: prepareContainer(el, width, height), width, height }).start();
+  if (fit && el) {
+    const onResize = sharp && canvas && typeof p.pixelDensity === 'function' ? densityMatcher(p, () => scaler) : null;
+    const scaler = new LetterboxScaler({ canvas: el, container: prepareContainer(el, width, height), width, height, onResize });
+    game.scaler = scaler.start();
+  }
   if (el) bindInput(game, el);
   game.audio?.unlockOnGesture(globalThis.window ?? globalThis);
 

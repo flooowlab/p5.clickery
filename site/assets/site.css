@@ -70,10 +70,10 @@ pre.code { background: var(--code-bg); border: 1px solid var(--line); border-rad
 /* learn topic: a full-width workspace of three resizable panes (text | code | result) */
 .learn-topic { max-width: none; padding: 0; height: calc(100vh - var(--top)); display: flex; flex-direction: column; --w-text: 24%; --w-code: 30%; }
 body.section-learn:has(.learn-topic) { overflow: hidden; }
-.subbar { display: flex; align-items: center; gap: 14px; padding: 6px 16px; border-bottom: 1px solid var(--line); background: var(--panel); overflow-x: auto; flex: none; }
-.subbar .tabs { margin: 0; flex: none; flex-wrap: nowrap; }
+.subbar { display: flex; flex-direction: column; gap: 4px; padding: 6px 16px; border-bottom: 1px solid var(--line); background: var(--panel); flex: none; }
+.subbar .tabs { margin: 0; flex-wrap: wrap; }
 .subbar .tabs a { padding: 3px 12px; font-size: 14px; }
-.pagelist { display: flex; gap: 2px; flex: none; padding-left: 14px; border-left: 1px solid var(--line); }
+.pagelist { display: flex; flex-wrap: wrap; gap: 2px; }
 .pagelist a { display: flex; gap: 6px; align-items: baseline; padding: 4px 10px; border-radius: 6px; color: var(--ink); text-decoration: none; white-space: nowrap; font-size: 14.5px; }
 .pagelist a span { color: var(--muted); font-size: 12px; }
 .pagelist a:hover { background: var(--code-bg); }

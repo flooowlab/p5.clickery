@@ -4257,7 +4257,19 @@ function driveUntilDrawing(game, { request = globalThis.requestAnimationFrame?.b
 }
 
 // src/game/p5-binding.js
-function attachP5(game, p, { canvas = true, parent = null, fit = true } = {}) {
+function densityMatcher(p, getScaler) {
+  let applied = null;
+  return (layout) => {
+    if (!(layout.scale > 0)) return;
+    const dpr = globalThis.devicePixelRatio || 1;
+    const density = Math.min(4, Math.max(1, Math.ceil(layout.scale * dpr * 2) / 2));
+    if (density === applied) return;
+    applied = density;
+    p.pixelDensity(density);
+    getScaler()?.update();
+  };
+}
+function attachP5(game, p, { canvas = true, parent = null, fit = true, sharp = true } = {}) {
   const { width, height } = game.options;
   game.p = p;
   const renderer = canvas ? p.createGameCanvas(width, height) : null;
@@ -4267,7 +4279,11 @@ function attachP5(game, p, { canvas = true, parent = null, fit = true } = {}) {
     if (!node) throw new Error(`no element with id "${parent}" to put the game in`);
     node.appendChild(el);
   }
-  if (fit && el) game.scaler = new LetterboxScaler({ canvas: el, container: prepareContainer(el, width, height), width, height }).start();
+  if (fit && el) {
+    const onResize = sharp && canvas && typeof p.pixelDensity === "function" ? densityMatcher(p, () => scaler) : null;
+    const scaler = new LetterboxScaler({ canvas: el, container: prepareContainer(el, width, height), width, height, onResize });
+    game.scaler = scaler.start();
+  }
   if (el) bindInput(game, el);
   game.audio?.unlockOnGesture(globalThis.window ?? globalThis);
   game.loadAssets = () => loadImages(game, p);
