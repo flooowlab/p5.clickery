@@ -1,6 +1,6 @@
 // A lesson topic: shows the page chosen by ?page=N, and runs each sketch in a sandboxed frame.
 const sections = [...document.querySelectorAll('.lesson')];
-const links = [...document.querySelectorAll('.side a[data-page]')];
+const links = [...document.querySelectorAll('.pagelist a[data-page]')];
 const site = new URL('../', location.href).href;
 const build = document.currentScript?.dataset.build ?? ''; // makes a browser fetch the library again after a new build
 const ran = new Set();
@@ -41,7 +41,8 @@ function show(index) {
   sections.forEach((s, i) => { s.hidden = i !== n; });
   links.forEach((a) => a.classList.toggle('active', Number(a.dataset.page) === n));
   if (!ran.has(sections[n])) run(sections[n]);
-  scrollTo(0, 0);
+  links.find((a) => Number(a.dataset.page) === n)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  sections[n].querySelector('.text').scrollTop = 0;
   return n;
 }
 
@@ -64,8 +65,7 @@ for (const section of sections) {
   const fit = () => { area.rows = Math.max(area.value.split('\n').length + 1, 12); };
   fit();
   section.querySelector('.run').addEventListener('click', () => run(section));
-  section.querySelector('.reset').addEventListener('click', () => { area.value = original; fit(); run(section); });
-  area.addEventListener('input', fit);
+  section.querySelector('.reset').addEventListener('click', () => { area.value = original; run(section); });
   area.addEventListener('keydown', (e) => {
     if (e.key === 'Tab') {
       e.preventDefault();
@@ -75,6 +75,48 @@ for (const section of sections) {
       run(section);
     }
   });
+}
+
+// Pane widths (percent of the page) are shared by every lesson and kept between visits.
+const topic = document.querySelector('.learn-topic');
+const widths = { text: 24, code: 30 };
+try { Object.assign(widths, JSON.parse(localStorage.getItem('clickery-panes'))); } catch { /* defaults */ }
+function applyWidths() {
+  widths.text = Math.min(Math.max(widths.text, 12), 45);
+  widths.code = Math.min(Math.max(widths.code, 15), 60);
+  topic.style.setProperty('--w-text', `${widths.text}%`);
+  topic.style.setProperty('--w-code', `${widths.code}%`);
+}
+function saveWidths() { try { localStorage.setItem('clickery-panes', JSON.stringify(widths)); } catch { /* private mode */ } }
+applyWidths();
+for (const bar of document.querySelectorAll('.split')) {
+  const which = bar.dataset.split;
+  bar.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    bar.setPointerCapture(e.pointerId);
+    const section = bar.closest('.lesson');
+    const total = section.getBoundingClientRect().width;
+    const startX = e.clientX, start = widths[which];
+    section.classList.add('dragging'); // the sketch frame would swallow the pointer events otherwise
+    const move = (m) => { widths[which] = start + ((m.clientX - startX) / total) * 100; applyWidths(); };
+    const end = () => {
+      section.classList.remove('dragging');
+      bar.removeEventListener('pointermove', move);
+      bar.removeEventListener('pointerup', end);
+      bar.removeEventListener('pointercancel', end);
+      saveWidths();
+    };
+    bar.addEventListener('pointermove', move);
+    bar.addEventListener('pointerup', end);
+    bar.addEventListener('pointercancel', end);
+  });
+  bar.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    widths[which] += e.key === 'ArrowRight' ? 2 : -2;
+    applyWidths(); saveWidths();
+  });
+  bar.addEventListener('dblclick', () => { widths[which] = which === 'text' ? 24 : 30; applyWidths(); saveWidths(); });
 }
 
 addEventListener('message', (e) => {

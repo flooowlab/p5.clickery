@@ -24,23 +24,25 @@ ${tabs(lessons, '')}
 }
 
 function topicPage(lessons, lesson, hrefOf) {
-  const list = lesson.pages.map((p, i) => `<li><a href="?page=${i}" data-page="${i}">${escapeHtml(p.title)}</a></li>`).join('');
+  const list = lesson.pages.map((p, i) => `<a href="?page=${i}" data-page="${i}"><span>${i + 1}</span>${escapeHtml(p.title)}</a>`).join('');
   const sections = lesson.pages.map((p, i) => `<section class="lesson" data-page="${i}" hidden>
-  <h1>${escapeHtml(p.title)}</h1>
-  <div class="prose">${renderMarkdown(p.text, hrefOf)}</div>
-  <p class="covers">${p.covers.map((c) => `<code>${escapeHtml(c.replace('#', '.'))}</code>`).join(' ')}</p>
-  <div class="workbench">
-    <div class="editor">
-      <div class="bar"><span>sketch.js</span><span><button type="button" class="run">Run ▶</button><button type="button" class="reset">Reset</button></span></div>
-      <textarea class="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Sketch code">${escapeHtml(p.code)}</textarea>
-    </div>
-    <div class="stage"><iframe title="Result" sandbox="allow-scripts allow-same-origin allow-downloads"></iframe><pre class="error" hidden></pre></div>
+  <article class="text">
+    <h1>${escapeHtml(p.title)}</h1>
+    <div class="prose">${renderMarkdown(p.text, hrefOf)}</div>
+    <p class="covers">${p.covers.map((c) => `<code>${escapeHtml(c.replace('#', '.'))}</code>`).join(' ')}</p>
+    <p class="pager">${i > 0 ? `<a href="?page=${i - 1}" data-page="${i - 1}">← Previous</a>` : '<span></span>'}${i < lesson.pages.length - 1 ? `<a href="?page=${i + 1}" data-page="${i + 1}">Next →</a>` : '<span></span>'}</p>
+  </article>
+  <div class="split" data-split="text" role="separator" aria-orientation="vertical" aria-label="Resize text" tabindex="0"></div>
+  <div class="editor">
+    <div class="bar"><span>sketch.js</span><span><button type="button" class="run">Run ▶</button><button type="button" class="reset">Reset</button></span></div>
+    <textarea class="code" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Sketch code">${escapeHtml(p.code)}</textarea>
   </div>
-  <p class="pager">${i > 0 ? `<a href="?page=${i - 1}" data-page="${i - 1}">← Previous</a>` : '<span></span>'}${i < lesson.pages.length - 1 ? `<a href="?page=${i + 1}" data-page="${i + 1}">Next →</a>` : '<span></span>'}</p>
+  <div class="split" data-split="code" role="separator" aria-orientation="vertical" aria-label="Resize editor" tabindex="0"></div>
+  <div class="stage"><div class="view"><iframe title="Result" sandbox="allow-scripts allow-same-origin allow-downloads"></iframe></div><pre class="error" hidden></pre></div>
 </section>`).join('');
   return page({
     title: `${lesson.title} · Learn · p5.clickery`, root: '../', section: 'learn', description: lesson.blurb,
-    body: `<main class="learn-topic">${tabs(lessons, lesson.slug)}<div class="topic"><aside class="side"><p class="group">${escapeHtml(lesson.title)}</p><ol>${list}</ol></aside><div class="pages">${sections}</div></div></main>`,
+    body: `<main class="learn-topic"><div class="subbar">${tabs(lessons, lesson.slug)}<nav class="pagelist" aria-label="${escapeHtml(lesson.title)}">${list}</nav></div>${sections}</main>`,
     scripts: `<script src="../assets/learn.js?v=${BUILD}" data-build="${BUILD}"></script>`,
   });
 }
